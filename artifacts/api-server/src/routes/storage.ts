@@ -6,7 +6,7 @@ import {
 } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 import { ObjectPermission } from "../lib/objectAcl";
-import { requireAuth } from "../lib/auth";
+import { requireAuth, getSessionProfile } from "../lib/auth";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -146,7 +146,7 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     // Audio and images on LayerStack are public-by-default; if an object has
     // an ACL policy attached, it is enforced. Objects without a policy are
     // treated as public-readable (see objectAcl.ts).
-    const profile = (req as Request & { profile?: { id: string } }).profile;
+    const profile = await getSessionProfile(req);
     const canAccess = await objectStorageService.canAccessObjectEntity({
       userId: profile?.id,
       objectFile,
