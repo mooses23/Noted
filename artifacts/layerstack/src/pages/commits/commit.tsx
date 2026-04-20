@@ -1,5 +1,5 @@
 import { useParams, Link } from "wouter";
-import { useGetCommit, useVoteOnCommit, useUnvoteCommit } from "@workspace/api-client-react";
+import { useGetCommit, useVoteOnCommit, useUnvoteCommit, useGetCurrentUser } from "@workspace/api-client-react";
 import { getGetCommitQueryKey } from "@workspace/api-client-react";
 import type { CommitDetail } from "@workspace/api-client-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { ThumbsUp, Disc3, Calendar, ShieldCheck } from "lucide-react";
 import { format } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { storageUrl } from "@/lib/utils";
 
 export default function CommitDetail() {
   const params = useParams();
@@ -16,13 +18,25 @@ export default function CommitDetail() {
   const { data: commit, isLoading } = useGetCommit(commitId, {
     query: { enabled: !!commitId, queryKey: getGetCommitQueryKey(commitId) }
   });
+  const { data: user } = useGetCurrentUser();
+  const { toast } = useToast();
 
   const voteMutation = useVoteOnCommit();
   const unvoteMutation = useUnvoteCommit();
 
+  const isOwner = !!user?.profile?.id && !!commit && user.profile.id === commit.contributorId;
+
   const handleVoteToggle = () => {
     if (!commit) return;
-    
+    if (!user?.authenticated) {
+      toast({ title: "Sign in required", description: "You must be signed in to vote.", variant: "destructive" });
+      return;
+    }
+
+    const onError = (err: Error) => {
+      toast({ title: "Vote failed", description: err.message, variant: "destructive" });
+    };
+
     if (commit.hasVoted) {
       unvoteMutation.mutate({ commitId }, {
         onSuccess: (res) => {
@@ -30,7 +44,9 @@ export default function CommitDetail() {
             getGetCommitQueryKey(commitId),
             (old) => (old ? { ...old, hasVoted: false, voteCount: res.voteCount } : old),
           );
-        }
+          toast({ title: "Vote removed" });
+        },
+        onError,
       });
     } else {
       voteMutation.mutate({ commitId }, {
@@ -39,7 +55,9 @@ export default function CommitDetail() {
             getGetCommitQueryKey(commitId),
             (old) => (old ? { ...old, hasVoted: true, voteCount: res.voteCount } : old),
           );
-        }
+          toast({ title: "Vote recorded" });
+        },
+        onError,
       });
     }
   };
@@ -75,7 +93,7 @@ export default function CommitDetail() {
               <div className="flex items-center gap-4 text-muted-foreground">
                 <div className="flex items-center gap-2">
                   {commit.contributor.avatarUrl ? (
-                    <img src={commit.contributor.avatarUrl} alt={commit.contributor.displayName} className="w-6 h-6 object-cover border border-border" />
+                    <img src={storageUrl(commit.contributor.avatarUrl)} alt={commit.contributor.displayName} className="w-6 h-6 object-cover border border-border" />
                   ) : (
                     <div className="w-6 h-6 bg-secondary flex items-center justify-center border border-border text-xs font-serif text-foreground">
                       {commit.contributor.displayName.charAt(0).toUpperCase()}
@@ -90,17 +108,19 @@ export default function CommitDetail() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col items-end gap-2">
               <Button 
                 variant={commit.hasVoted ? "default" : "outline"} 
                 className="h-12 px-6 rounded-none flex items-center gap-2 uppercase tracking-widest"
                 onClick={handleVoteToggle}
-                disabled={voteMutation.isPending || unvoteMutation.isPending}
+                disabled={isOwner || voteMutation.isPending || unvoteMutation.isPending}
+                title={isOwner ? "You can't vote on your own commit" : ""}
               >
                 <ThumbsUp className={`w-4 h-4 ${commit.hasVoted ? "fill-current" : ""}`} />
-                <span>Vote</span>
+                <span>{commit.hasVoted ? "Voted" : "Vote"}</span>
                 <span className="bg-background/20 px-2 py-0.5 ml-2 font-mono text-xs">{commit.voteCount}</span>
               </Button>
+              {isOwner && <div className="text-xs text-muted-foreground uppercase tracking-widest">Your own commit</div>}
             </div>
           </div>
 

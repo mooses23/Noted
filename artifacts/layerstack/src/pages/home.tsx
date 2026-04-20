@@ -3,6 +3,7 @@ import { ArrowRight, Disc3, Users, PlayCircle, GitBranch, ShieldCheck } from "lu
 import { useGetFeaturedSong, useListRisingCommits, useGetPublicStats } from "@workspace/api-client-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { Button } from "@/components/ui/button";
+import { CoverImage } from "@/components/CoverImage";
 
 export default function Home() {
   const { data: featured, isLoading: isFeaturedLoading } = useGetFeaturedSong();
@@ -41,13 +42,12 @@ export default function Home() {
           ) : featured?.song ? (
             <div className="w-full max-w-3xl bg-card border border-border p-6 md:p-8 text-left">
               <div className="flex flex-col md:flex-row gap-8">
-                {featured.song.coverImageUrl && (
-                  <img 
-                    src={featured.song.coverImageUrl} 
-                    alt={featured.song.title} 
-                    className="w-32 h-32 md:w-48 md:h-48 object-cover border border-border flex-shrink-0 shadow-2xl"
-                  />
-                )}
+                <CoverImage
+                  url={featured.song.coverImageUrl}
+                  alt={featured.song.title}
+                  className="w-32 h-32 md:w-48 md:h-48 border border-border flex-shrink-0 shadow-2xl"
+                  iconSize="w-12 h-12"
+                />
                 <div className="flex-1 min-w-0 flex flex-col">
                   <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-primary mb-2">
                     <Disc3 className="w-4 h-4" />

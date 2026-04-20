@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { useListSongs } from "@workspace/api-client-react";
 import { Disc3, Clock } from "lucide-react";
 import { format } from "date-fns";
+import { CoverImage } from "@/components/CoverImage";
 
 export default function Songs() {
   const { data: songs, isLoading } = useListSongs({ status: "active" });
@@ -26,17 +27,12 @@ export default function Songs() {
           {songs.map((song) => (
             <Link key={song.id} href={`/songs/${song.slug}`}>
               <div className="bg-card border border-border flex hover:border-primary/50 transition-colors h-full cursor-pointer group">
-                {song.coverImageUrl ? (
-                  <img 
-                    src={song.coverImageUrl} 
-                    alt={song.title} 
-                    className="w-32 md:w-40 object-cover border-r border-border group-hover:opacity-90 transition-opacity"
-                  />
-                ) : (
-                  <div className="w-32 md:w-40 bg-secondary flex items-center justify-center border-r border-border group-hover:bg-secondary/80 transition-colors">
-                    <Disc3 className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                )}
+                <CoverImage
+                  url={song.coverImageUrl}
+                  alt={song.title}
+                  className="w-32 md:w-40 border-r border-border group-hover:opacity-90 transition-opacity"
+                  iconSize="w-8 h-8"
+                />
                 
                 <div className="p-6 flex flex-col flex-1 min-w-0">
                   <div className="text-xs uppercase tracking-widest text-primary mb-2 truncate">
