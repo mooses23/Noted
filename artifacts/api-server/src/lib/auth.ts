@@ -3,37 +3,81 @@ import { getAuth, clerkClient } from "@clerk/express";
 import { db, profilesTable, type Profile } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
+const ADMIN_EMAIL_ALLOWLIST = (process.env.LAYERSTACK_ADMIN_EMAILS ?? "")
+  .split(",")
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
+function resolveIsAdmin(
+  user: { publicMetadata?: Record<string, unknown>; emailAddresses?: { emailAddress: string }[] },
+): boolean {
+  const metaAdmin = user.publicMetadata?.["isAdmin"];
+  if (metaAdmin === true) return true;
+  const role = user.publicMetadata?.["role"];
+  if (typeof role === "string" && role.toLowerCase() === "admin") return true;
+  if (ADMIN_EMAIL_ALLOWLIST.length > 0) {
+    for (const e of user.emailAddresses ?? []) {
+      if (ADMIN_EMAIL_ALLOWLIST.includes(e.emailAddress.toLowerCase())) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export async function getSessionProfile(req: Request): Promise<Profile | null> {
   const auth = getAuth(req);
   const clerkId = auth?.userId;
   if (!clerkId) return null;
+
+  let clerkUser: Awaited<ReturnType<typeof clerkClient.users.getUser>> | null =
+    null;
+  try {
+    clerkUser = await clerkClient.users.getUser(clerkId);
+  } catch {
+    // ignore — Clerk fetch may fail in dev
+  }
+
+  const isAdmin = clerkUser ? resolveIsAdmin(clerkUser) : false;
 
   const existing = await db
     .select()
     .from(profilesTable)
     .where(eq(profilesTable.clerkId, clerkId))
     .limit(1);
-  if (existing.length > 0) return existing[0]!;
+  if (existing.length > 0) {
+    const profile = existing[0]!;
+    // Re-sync admin flag so Clerk metadata / email allowlist remain authoritative.
+    if (profile.isAdmin !== isAdmin) {
+      const [updated] = await db
+        .update(profilesTable)
+        .set({ isAdmin, updatedAt: new Date() })
+        .where(eq(profilesTable.id, profile.id))
+        .returning();
+      return updated ?? profile;
+    }
+    return profile;
+  }
 
   let displayName = "Contributor";
   let avatarUrl: string | null = null;
   let username: string | null = null;
-  try {
-    const user = await clerkClient.users.getUser(clerkId);
+  if (clerkUser) {
     displayName =
-      [user.firstName, user.lastName].filter(Boolean).join(" ").trim() ||
-      user.username ||
-      user.emailAddresses?.[0]?.emailAddress?.split("@")[0] ||
+      [clerkUser.firstName, clerkUser.lastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim() ||
+      clerkUser.username ||
+      clerkUser.emailAddresses?.[0]?.emailAddress?.split("@")[0] ||
       "Contributor";
-    username = user.username ?? null;
-    avatarUrl = user.imageUrl ?? null;
-  } catch {
-    // ignore — fall back to defaults
+    username = clerkUser.username ?? null;
+    avatarUrl = clerkUser.imageUrl ?? null;
   }
 
   const [created] = await db
     .insert(profilesTable)
-    .values({ clerkId, displayName, username, avatarUrl, isAdmin: false })
+    .values({ clerkId, displayName, username, avatarUrl, isAdmin })
     .returning();
   return created!;
 }

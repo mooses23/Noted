@@ -29,7 +29,7 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
   }
 
   try {
-    const { name, size, contentType } = parsed.data;
+    const { name, size, contentType, purpose, songId, roundId } = parsed.data;
 
     if (size > MAX_UPLOAD_BYTES) {
       res.status(400).json({ error: `File too large. Max ${MAX_UPLOAD_BYTES} bytes.` });
@@ -40,7 +40,46 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
       return;
     }
 
-    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+    // Map upload intent to a structured storage key layout.
+    let prefix: string;
+    switch (purpose) {
+      case "official-mix":
+        if (!songId) {
+          res.status(400).json({ error: "songId is required for official-mix uploads." });
+          return;
+        }
+        prefix = `songs/${songId}/official`;
+        break;
+      case "stem":
+        if (!songId) {
+          res.status(400).json({ error: "songId is required for stem uploads." });
+          return;
+        }
+        prefix = `songs/${songId}/stems`;
+        break;
+      case "cover":
+        if (!songId) {
+          res.status(400).json({ error: "songId is required for cover uploads." });
+          return;
+        }
+        prefix = `songs/${songId}/cover`;
+        break;
+      case "commit-audio":
+        if (!roundId) {
+          res.status(400).json({ error: "roundId is required for commit-audio uploads." });
+          return;
+        }
+        prefix = `rounds/${roundId}/commits`;
+        break;
+      case "avatar":
+        prefix = `avatars`;
+        break;
+      default:
+        res.status(400).json({ error: "Unsupported upload purpose." });
+        return;
+    }
+
+    const uploadURL = await objectStorageService.getObjectEntityUploadURL({ prefix });
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
 
     res.json(

@@ -21,6 +21,29 @@ import {
   toContributor,
 } from "../lib/shapes";
 import { versionsWithMergesForSong } from "./versions";
+import {
+  AdminCreateSongBody,
+  AdminUpdateSongBody,
+  AdminAddSongFileBody,
+  AdminCreateRoundBody,
+  AdminUpdateRoundBody,
+  AdminSetCommitStatusBody,
+  AdminCreateVersionBody,
+} from "@workspace/api-zod";
+import { z } from "zod";
+
+function parseBody<S extends z.ZodTypeAny>(
+  schema: S,
+  body: unknown,
+  res: Response,
+): z.infer<S> | null {
+  const result = schema.safeParse(body ?? {});
+  if (!result.success) {
+    res.status(400).json({ error: "Invalid request body", details: result.error.flatten() });
+    return null;
+  }
+  return result.data;
+}
 
 const router: IRouter = Router();
 
@@ -32,11 +55,8 @@ router.get("/songs", async (_req: Request, res: Response) => {
 });
 
 router.post("/songs", async (req: Request, res: Response) => {
-  const b = req.body ?? {};
-  if (!b.slug || !b.title || !b.creatorName || !b.genre || !b.bpm || !b.musicalKey) {
-    res.status(400).json({ error: "Missing required fields" });
-    return;
-  }
+  const b = parseBody(AdminCreateSongBody, req.body, res);
+  if (!b) return;
   const [created] = await db
     .insert(songsTable)
     .values({
@@ -55,7 +75,8 @@ router.post("/songs", async (req: Request, res: Response) => {
 });
 
 router.patch("/songs/:songId", async (req: Request, res: Response) => {
-  const b = req.body ?? {};
+  const b = parseBody(AdminUpdateSongBody, req.body, res);
+  if (!b) return;
   const [updated] = await db
     .update(songsTable)
     .set({
@@ -80,11 +101,8 @@ router.patch("/songs/:songId", async (req: Request, res: Response) => {
 });
 
 router.post("/songs/:songId/files", async (req: Request, res: Response) => {
-  const b = req.body ?? {};
-  if (!b.fileType || !b.label || !b.fileObjectPath || !b.originalFilename) {
-    res.status(400).json({ error: "Missing required fields" });
-    return;
-  }
+  const b = parseBody(AdminAddSongFileBody, req.body, res);
+  if (!b) return;
   const [created] = await db
     .insert(songFilesTable)
     .values({
@@ -97,7 +115,6 @@ router.post("/songs/:songId/files", async (req: Request, res: Response) => {
     })
     .returning();
 
-  // If cover, set song coverImageUrl
   if (b.fileType === "cover") {
     await db
       .update(songsTable)
@@ -108,11 +125,8 @@ router.post("/songs/:songId/files", async (req: Request, res: Response) => {
 });
 
 router.post("/rounds", async (req: Request, res: Response) => {
-  const b = req.body ?? {};
-  if (!b.songId || !b.title || !b.allowedInstrumentType) {
-    res.status(400).json({ error: "Missing required fields" });
-    return;
-  }
+  const b = parseBody(AdminCreateRoundBody, req.body, res);
+  if (!b) return;
   const [{ maxNum }] = await db
     .select({ maxNum: sql<number>`coalesce(max(${roundsTable.roundNumber}), 0)::int` })
     .from(roundsTable)
@@ -134,7 +148,8 @@ router.post("/rounds", async (req: Request, res: Response) => {
 });
 
 router.patch("/rounds/:roundId", async (req: Request, res: Response) => {
-  const b = req.body ?? {};
+  const b = parseBody(AdminUpdateRoundBody, req.body, res);
+  if (!b) return;
   const [updated] = await db
     .update(roundsTable)
     .set({
@@ -177,11 +192,9 @@ router.get("/commits", async (req: Request, res: Response) => {
 });
 
 router.patch("/commits/:commitId/status", async (req: Request, res: Response) => {
-  const { status } = req.body ?? {};
-  if (!["pending", "shortlisted", "merged", "rejected"].includes(status)) {
-    res.status(400).json({ error: "Invalid status" });
-    return;
-  }
+  const b = parseBody(AdminSetCommitStatusBody, req.body, res);
+  if (!b) return;
+  const status = b.status;
   const [updated] = await db
     .update(commitsTable)
     .set({ status, updatedAt: new Date() })
@@ -211,11 +224,8 @@ router.patch("/commits/:commitId/status", async (req: Request, res: Response) =>
 });
 
 router.post("/versions", async (req: Request, res: Response) => {
-  const b = req.body ?? {};
-  if (!b.songId || !b.title || !b.officialMixObjectPath || !Array.isArray(b.mergedCommitIds)) {
-    res.status(400).json({ error: "Missing required fields" });
-    return;
-  }
+  const b = parseBody(AdminCreateVersionBody, req.body, res);
+  if (!b) return;
   const actor = (req as Request & { profile: { id: string } }).profile;
 
   const result = await db.transaction(async (tx) => {

@@ -688,6 +688,15 @@ export const RequestUploadUrlBody = zod.object({
   name: zod.string(),
   size: zod.number(),
   contentType: zod.string(),
+  purpose: zod.enum([
+    "official-mix",
+    "stem",
+    "commit-audio",
+    "cover",
+    "avatar",
+  ]),
+  songId: zod.string().uuid().optional(),
+  roundId: zod.string().uuid().optional(),
 });
 
 export const RequestUploadUrlResponse = zod.object({

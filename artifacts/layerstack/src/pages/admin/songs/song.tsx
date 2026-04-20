@@ -337,7 +337,7 @@ function PublishVersionPanel({
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) uploadFile(file);
+    if (file) uploadFile(file, { purpose: "official-mix", songId });
   };
 
   const submit = () => {
@@ -652,7 +652,13 @@ function FilesPanel({ songId, files }: { songId: string; files: SongFile[] }) {
     if (!f) return;
     setFilename(f.name);
     setSize(f.size);
-    uploadFile(f);
+    const purpose =
+      fileType === AdminAddSongFileBodyFileType.cover
+        ? "cover"
+        : fileType === AdminAddSongFileBodyFileType.stem
+          ? "stem"
+          : "official-mix";
+    uploadFile(f, { purpose, songId });
   };
 
   const submit = () => {

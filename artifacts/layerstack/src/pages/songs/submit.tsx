@@ -66,8 +66,11 @@ export default function SubmitCommit() {
   });
 
   useEffect(() => {
-    if (audioFile && !objectPath && !isUploading) {
-      uploadFile(audioFile);
+    if (audioFile && !objectPath && !isUploading && song?.currentRound) {
+      uploadFile(audioFile, {
+        purpose: "commit-audio",
+        roundId: song.currentRound.id,
+      });
     }
   }, [audioFile, objectPath, isUploading, uploadFile]);
 

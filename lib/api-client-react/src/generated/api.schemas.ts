@@ -337,10 +337,24 @@ export interface AdminCreateVersionBody {
   mergedCommitIds: string[];
 }
 
+export type RequestUploadUrlBodyPurpose =
+  (typeof RequestUploadUrlBodyPurpose)[keyof typeof RequestUploadUrlBodyPurpose];
+
+export const RequestUploadUrlBodyPurpose = {
+  "official-mix": "official-mix",
+  stem: "stem",
+  "commit-audio": "commit-audio",
+  cover: "cover",
+  avatar: "avatar",
+} as const;
+
 export interface RequestUploadUrlBody {
   name: string;
   size: number;
   contentType: string;
+  purpose: RequestUploadUrlBodyPurpose;
+  songId?: string;
+  roundId?: string;
 }
 
 export type RequestUploadUrlResponseMetadata = {
