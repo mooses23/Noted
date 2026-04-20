@@ -7,6 +7,19 @@ interface UploadMetadata {
   contentType: string;
 }
 
+export type UploadPurpose =
+  | "official-mix"
+  | "stem"
+  | "commit-audio"
+  | "cover"
+  | "avatar";
+
+export interface UploadIntent {
+  purpose: UploadPurpose;
+  songId?: string;
+  roundId?: string;
+}
+
 interface UploadResponse {
   uploadURL: string;
   objectPath: string;
@@ -60,7 +73,7 @@ export function useUpload(options: UseUploadOptions = {}) {
   const [progress, setProgress] = useState(0);
 
   const requestUploadUrl = useCallback(
-    async (file: File): Promise<UploadResponse> => {
+    async (file: File, intent: UploadIntent): Promise<UploadResponse> => {
       const response = await fetch(`${basePath}/uploads/request-url`, {
         method: "POST",
         headers: {
@@ -70,6 +83,9 @@ export function useUpload(options: UseUploadOptions = {}) {
           name: file.name,
           size: file.size,
           contentType: file.type || "application/octet-stream",
+          purpose: intent.purpose,
+          ...(intent.songId ? { songId: intent.songId } : {}),
+          ...(intent.roundId ? { roundId: intent.roundId } : {}),
         }),
       });
 
@@ -101,14 +117,14 @@ export function useUpload(options: UseUploadOptions = {}) {
   );
 
   const uploadFile = useCallback(
-    async (file: File): Promise<UploadResponse | null> => {
+    async (file: File, intent: UploadIntent): Promise<UploadResponse | null> => {
       setIsUploading(true);
       setError(null);
       setProgress(0);
 
       try {
         setProgress(10);
-        const uploadResponse = await requestUploadUrl(file);
+        const uploadResponse = await requestUploadUrl(file, intent);
 
         setProgress(30);
         await uploadToPresignedUrl(file, uploadResponse.uploadURL);

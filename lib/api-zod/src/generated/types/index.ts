@@ -40,6 +40,7 @@ export * from "./logDownloadBody";
 export * from "./profile";
 export * from "./publicStats";
 export * from "./requestUploadUrlBody";
+export * from "./requestUploadUrlBodyPurpose";
 export * from "./requestUploadUrlResponse";
 export * from "./requestUploadUrlResponseMetadata";
 export * from "./round";

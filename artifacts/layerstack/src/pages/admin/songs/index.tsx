@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { useAdminListSongs, useAdminCreateSong } from "@workspace/api-client-react";
+import { useAdminListSongs, useAdminCreateSong, getAdminListSongsQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Plus, Settings2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -113,7 +113,7 @@ function CreateSongDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
     createMutation.mutate({ data: values }, {
       onSuccess: () => {
         toast({ title: "Song Created", description: "The new seed song has been created." });
-        queryClient.invalidateQueries({ queryKey: ["/api/admin/songs"] as any });
+        queryClient.invalidateQueries({ queryKey: getAdminListSongsQueryKey() });
         onOpenChange(false);
         form.reset();
       },

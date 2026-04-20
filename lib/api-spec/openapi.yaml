@@ -930,11 +930,16 @@ components:
 
     RequestUploadUrlBody:
       type: object
-      required: [name, size, contentType]
+      required: [name, size, contentType, purpose]
       properties:
         name: { type: string }
         size: { type: integer }
         contentType: { type: string }
+        purpose:
+          type: string
+          enum: [official-mix, stem, commit-audio, cover, avatar]
+        songId: { type: string, format: uuid }
+        roundId: { type: string, format: uuid }
 
     RequestUploadUrlResponse:
       type: object

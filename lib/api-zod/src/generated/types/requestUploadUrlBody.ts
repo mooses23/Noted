@@ -5,9 +5,13 @@
  * LayerStack API — collaborative human-made music platform
  * OpenAPI spec version: 0.1.0
  */
+import type { RequestUploadUrlBodyPurpose } from "./requestUploadUrlBodyPurpose";
 
 export interface RequestUploadUrlBody {
   name: string;
   size: number;
   contentType: string;
+  purpose: RequestUploadUrlBodyPurpose;
+  songId?: string;
+  roundId?: string;
 }
