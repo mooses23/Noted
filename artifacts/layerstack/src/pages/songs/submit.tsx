@@ -69,6 +69,7 @@ export default function SubmitCommit() {
     if (audioFile && !objectPath && !isUploading && song?.currentRound) {
       uploadFile(audioFile, {
         purpose: "commit-audio",
+        songId: song.id,
         roundId: song.currentRound.id,
       });
     }

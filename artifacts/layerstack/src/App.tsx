@@ -9,6 +9,8 @@ import { useGetCurrentUser } from "@workspace/api-client-react";
 import Home from "./pages/home";
 import Songs from "./pages/songs";
 import SongDetail from "./pages/songs/song";
+import SongVersions from "./pages/songs/versions";
+import SongStems from "./pages/songs/stems";
 import SubmitCommit from "./pages/songs/submit";
 import Commits from "./pages/commits";
 import CommitDetail from "./pages/commits/commit";
@@ -232,6 +234,8 @@ function ClerkProviderWithRoutes() {
             
             <Route path="/songs" component={Songs} />
             <Route path="/songs/:slug" component={SongDetail} />
+            <Route path="/songs/:slug/versions" component={SongVersions} />
+            <Route path="/songs/:slug/stems" component={SongStems} />
             <Route path="/songs/:slug/submit" component={SubmitCommit} />
             
             <Route path="/commits" component={Commits} />

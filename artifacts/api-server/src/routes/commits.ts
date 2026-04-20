@@ -11,6 +11,11 @@ import { getSessionProfile, requireAuth } from "../lib/auth";
 import { fetchCommitRows, fetchCommitById, fetchMergedVersionForCommit } from "../lib/commitQueries";
 import { toCommitSummary, toRound, toVersion } from "../lib/shapes";
 import { SubmitCommitBody } from "@workspace/api-zod";
+import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+
+const MAX_COMMIT_AUDIO_BYTES = 60 * 1024 * 1024; // 60MB
+const ALLOWED_COMMIT_AUDIO_PREFIXES = ["audio/"];
+const objectStorage = new ObjectStorageService();
 
 const router: IRouter = Router();
 
@@ -109,6 +114,40 @@ router.post("/commits/submit", requireAuth, async (req: Request, res: Response) 
       error: `This round only accepts '${round.allowedInstrumentType}' submissions.`,
     });
     return;
+  }
+
+  // Enforce that audioObjectPath points to an audio file under this song+round's
+  // expected prefix (prevents clients from linking arbitrary objects).
+  const expectedPrefix = `/objects/songs/${round.songId}/rounds/${round.id}/commits/`;
+  if (!body.audioObjectPath.startsWith(expectedPrefix)) {
+    res.status(400).json({
+      error: "audioObjectPath must be an upload for this song and round.",
+    });
+    return;
+  }
+  try {
+    const objectFile = await objectStorage.getObjectEntityFile(body.audioObjectPath);
+    const [meta] = await objectFile.getMetadata();
+    const size = typeof meta.size === "string" ? parseInt(meta.size, 10) : Number(meta.size ?? 0);
+    const contentType = String(meta.contentType ?? "");
+    if (!size || size > MAX_COMMIT_AUDIO_BYTES) {
+      res.status(400).json({
+        error: `Audio file too large. Max ${MAX_COMMIT_AUDIO_BYTES} bytes.`,
+      });
+      return;
+    }
+    if (!ALLOWED_COMMIT_AUDIO_PREFIXES.some((p) => contentType.startsWith(p))) {
+      res.status(400).json({
+        error: "Uploaded file must be an audio/* content type.",
+      });
+      return;
+    }
+  } catch (err) {
+    if (err instanceof ObjectNotFoundError) {
+      res.status(400).json({ error: "Uploaded audio object not found." });
+      return;
+    }
+    throw err;
   }
 
   const [existing] = await db
