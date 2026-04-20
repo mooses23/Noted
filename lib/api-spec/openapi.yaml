@@ -3,34 +3,958 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: LayerStack API — collaborative human-made music platform
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: songs
+  - name: rounds
+  - name: commits
+  - name: votes
+  - name: versions
+  - name: profiles
+  - name: admin
+  - name: stats
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
           content:
             application/json:
+              schema: { $ref: "#/components/schemas/HealthStatus" }
+
+  /me:
+    get:
+      operationId: getCurrentUser
+      tags: [profiles]
+      summary: Current user profile (null if unauthenticated)
+      responses:
+        "200":
+          description: Profile or null
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CurrentUser" }
+
+  /songs:
+    get:
+      operationId: listSongs
+      tags: [songs]
+      summary: List songs
+      parameters:
+        - in: query
+          name: genre
+          required: false
+          schema: { type: string }
+        - in: query
+          name: status
+          required: false
+          schema: { type: string, enum: [draft, active, archived] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
               schema:
-                $ref: "#/components/schemas/HealthStatus"
+                type: array
+                items: { $ref: "#/components/schemas/Song" }
+
+  /songs/featured:
+    get:
+      operationId: getFeaturedSong
+      tags: [songs]
+      summary: Get the currently featured song (landing page hero)
+      responses:
+        "200":
+          description: Featured song with current round and current version
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeaturedSong" }
+
+  /songs/{songId}:
+    get:
+      operationId: getSong
+      tags: [songs]
+      parameters:
+        - $ref: "#/components/parameters/SongId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SongDetail" }
+
+  /songs/by-slug/{slug}:
+    get:
+      operationId: getSongBySlug
+      tags: [songs]
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SongDetail" }
+
+  /songs/{songId}/files:
+    get:
+      operationId: listSongFiles
+      tags: [songs]
+      parameters:
+        - $ref: "#/components/parameters/SongId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SongFile" }
+
+  /songs/{songId}/rounds:
+    get:
+      operationId: listRoundsForSong
+      tags: [rounds]
+      parameters:
+        - $ref: "#/components/parameters/SongId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Round" }
+
+  /songs/{songId}/versions:
+    get:
+      operationId: listVersionsForSong
+      tags: [versions]
+      parameters:
+        - $ref: "#/components/parameters/SongId"
+      responses:
+        "200":
+          description: Version history (oldest to newest)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/VersionWithMerges" }
+
+  /songs/{songId}/credits:
+    get:
+      operationId: listCredits
+      tags: [versions]
+      parameters:
+        - $ref: "#/components/parameters/SongId"
+      responses:
+        "200":
+          description: All merged contributors for this song
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CreditEntry" }
+
+  /rounds/{roundId}:
+    get:
+      operationId: getRound
+      tags: [rounds]
+      parameters:
+        - $ref: "#/components/parameters/RoundId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Round" }
+
+  /rounds/{roundId}/commits:
+    get:
+      operationId: listCommitsForRound
+      tags: [commits]
+      parameters:
+        - $ref: "#/components/parameters/RoundId"
+        - in: query
+          name: sort
+          required: false
+          schema: { type: string, enum: [top, newest] }
+      responses:
+        "200":
+          description: Commits for this round
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CommitSummary" }
+
+  /commits:
+    get:
+      operationId: listCommits
+      tags: [commits]
+      summary: List commits (filter by round or song)
+      parameters:
+        - in: query
+          name: songId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: roundId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: status
+          schema: { type: string, enum: [pending, shortlisted, merged, rejected] }
+        - in: query
+          name: sort
+          schema: { type: string, enum: [top, newest] }
+        - in: query
+          name: limit
+          schema: { type: integer }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CommitSummary" }
+
+  /commits/rising:
+    get:
+      operationId: listRisingCommits
+      tags: [commits]
+      summary: Top rising commits across all open rounds (for discovery)
+      parameters:
+        - in: query
+          name: limit
+          schema: { type: integer, default: 6 }
+        - in: query
+          name: genre
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CommitSummary" }
+
+  /commits/{commitId}:
+    get:
+      operationId: getCommit
+      tags: [commits]
+      parameters:
+        - $ref: "#/components/parameters/CommitId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommitDetail" }
+
+  /commits/submit:
+    post:
+      operationId: submitCommit
+      tags: [commits]
+      summary: Submit a new commit to an open round (after presigned upload)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SubmitCommitBody" }
+      responses:
+        "200":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommitDetail" }
+
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [stats]
+      summary: Request a presigned URL to upload a file directly to storage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RequestUploadUrlBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RequestUploadUrlResponse" }
+
+  /commits/{commitId}/vote:
+    post:
+      operationId: voteOnCommit
+      tags: [votes]
+      summary: Cast an upvote on a commit (idempotent)
+      parameters:
+        - $ref: "#/components/parameters/CommitId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VoteResult" }
+    delete:
+      operationId: unvoteCommit
+      tags: [votes]
+      summary: Remove an upvote
+      parameters:
+        - $ref: "#/components/parameters/CommitId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VoteResult" }
+
+  /downloads/log:
+    post:
+      operationId: logDownload
+      tags: [stats]
+      summary: Log a stem or file download (optional auth)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [songId, fileId]
+              properties:
+                songId: { type: string, format: uuid }
+                fileId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Logged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                required: [ok]
+
+  /stats/public:
+    get:
+      operationId: getPublicStats
+      tags: [stats]
+      summary: Public platform stats for landing page
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublicStats" }
+
+  /stats/admin:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Admin dashboard stats
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminStats" }
+
+  /admin/songs:
+    get:
+      operationId: adminListSongs
+      tags: [admin]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Song" }
+    post:
+      operationId: adminCreateSong
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateSongBody" }
+      responses:
+        "200":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Song" }
+
+  /admin/songs/{songId}:
+    patch:
+      operationId: adminUpdateSong
+      tags: [admin]
+      parameters:
+        - $ref: "#/components/parameters/SongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateSongBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Song" }
+
+  /admin/songs/{songId}/files:
+    post:
+      operationId: adminAddSongFile
+      tags: [admin]
+      parameters:
+        - $ref: "#/components/parameters/SongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminAddSongFileBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SongFile" }
+
+  /admin/rounds:
+    post:
+      operationId: adminCreateRound
+      tags: [admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateRoundBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Round" }
+
+  /admin/rounds/{roundId}:
+    patch:
+      operationId: adminUpdateRound
+      tags: [admin]
+      parameters:
+        - $ref: "#/components/parameters/RoundId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateRoundBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Round" }
+
+  /admin/commits:
+    get:
+      operationId: adminListCommits
+      tags: [admin]
+      parameters:
+        - in: query
+          name: songId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: roundId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: status
+          schema: { type: string, enum: [pending, shortlisted, merged, rejected] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CommitSummary" }
+
+  /admin/commits/{commitId}/status:
+    patch:
+      operationId: adminSetCommitStatus
+      tags: [admin]
+      parameters:
+        - $ref: "#/components/parameters/CommitId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [pending, shortlisted, merged, rejected]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommitDetail" }
+
+  /admin/versions:
+    post:
+      operationId: adminCreateVersion
+      tags: [admin]
+      summary: Publish a new official version with merged commits
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminCreateVersionBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VersionWithMerges" }
+
 components:
+  parameters:
+    SongId:
+      in: path
+      name: songId
+      required: true
+      schema: { type: string, format: uuid }
+    RoundId:
+      in: path
+      name: roundId
+      required: true
+      schema: { type: string, format: uuid }
+    CommitId:
+      in: path
+      name: commitId
+      required: true
+      schema: { type: string, format: uuid }
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
-        status:
-          type: string
-      required:
-        - status
+        status: { type: string }
 
+    CurrentUser:
+      type: object
+      required: [authenticated]
+      properties:
+        authenticated: { type: boolean }
+        profile:
+          nullable: true
+          oneOf: [{ $ref: "#/components/schemas/Profile" }]
+
+    Profile:
+      type: object
+      required: [id, displayName, isAdmin, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string }
+        username:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          nullable: true
+        bio:
+          type: string
+          nullable: true
+        socialHandle:
+          type: string
+          nullable: true
+        isAdmin: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    Song:
+      type: object
+      required: [id, slug, title, creatorName, status, genre, bpm, musicalKey, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        title: { type: string }
+        description:
+          type: string
+          nullable: true
+        coverImageUrl:
+          type: string
+          nullable: true
+        creatorName: { type: string }
+        genre: { type: string }
+        bpm: { type: integer }
+        musicalKey: { type: string }
+        timeSignature:
+          type: string
+          nullable: true
+        status: { type: string, enum: [draft, active, archived] }
+        currentVersionId:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    SongFile:
+      type: object
+      required: [id, songId, fileType, label, fileUrl, originalFilename, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        songId: { type: string, format: uuid }
+        fileType: { type: string, enum: [official_mix, stem, click, preview, cover, other] }
+        label: { type: string }
+        fileUrl: { type: string }
+        originalFilename: { type: string }
+        sizeBytes:
+          type: integer
+          nullable: true
+        createdAt: { type: string, format: date-time }
+
+    SongDetail:
+      allOf:
+        - $ref: "#/components/schemas/Song"
+        - type: object
+          required: [currentRound, currentVersion, stems, totalCommits, totalVotes, versionCount]
+          properties:
+            currentRound:
+              nullable: true
+              oneOf: [{ $ref: "#/components/schemas/Round" }]
+            currentVersion:
+              nullable: true
+              oneOf: [{ $ref: "#/components/schemas/Version" }]
+            stems:
+              type: array
+              items: { $ref: "#/components/schemas/SongFile" }
+            totalCommits: { type: integer }
+            totalVotes: { type: integer }
+            versionCount: { type: integer }
+
+    FeaturedSong:
+      type: object
+      required: [song]
+      properties:
+        song:
+          nullable: true
+          oneOf: [{ $ref: "#/components/schemas/SongDetail" }]
+
+    Round:
+      type: object
+      required: [id, songId, roundNumber, title, allowedInstrumentType, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        songId: { type: string, format: uuid }
+        roundNumber: { type: integer }
+        title: { type: string }
+        description:
+          type: string
+          nullable: true
+        allowedInstrumentType: { type: string }
+        status: { type: string, enum: [draft, open, closed, merged] }
+        opensAt:
+          type: string
+          format: date-time
+          nullable: true
+        closesAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        commitCount:
+          type: integer
+          nullable: true
+        totalVotes:
+          type: integer
+          nullable: true
+
+    CommitSummary:
+      type: object
+      required: [id, songId, roundId, contributorId, title, instrumentType, audioFileUrl, status, voteCount, createdAt, contributor, roundNumber, songTitle, songSlug]
+      properties:
+        id: { type: string, format: uuid }
+        songId: { type: string, format: uuid }
+        roundId: { type: string, format: uuid }
+        contributorId: { type: string, format: uuid }
+        title: { type: string }
+        note:
+          type: string
+          nullable: true
+        instrumentType: { type: string }
+        audioFileUrl: { type: string }
+        previewMixUrl:
+          type: string
+          nullable: true
+        status: { type: string, enum: [pending, shortlisted, merged, rejected] }
+        voteCount: { type: integer }
+        hasVoted: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        contributor: { $ref: "#/components/schemas/ContributorLite" }
+        roundNumber: { type: integer }
+        songTitle: { type: string }
+        songSlug: { type: string }
+        songGenre:
+          type: string
+          nullable: true
+
+    ContributorLite:
+      type: object
+      required: [id, displayName]
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string }
+        username:
+          type: string
+          nullable: true
+        avatarUrl:
+          type: string
+          nullable: true
+        socialHandle:
+          type: string
+          nullable: true
+
+    CommitDetail:
+      allOf:
+        - $ref: "#/components/schemas/CommitSummary"
+        - type: object
+          required: [round]
+          properties:
+            round: { $ref: "#/components/schemas/Round" }
+            mergedIntoVersion:
+              nullable: true
+              oneOf: [{ $ref: "#/components/schemas/Version" }]
+
+    Version:
+      type: object
+      required: [id, songId, versionNumber, title, officialMixUrl, isCurrent, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        songId: { type: string, format: uuid }
+        versionNumber: { type: integer }
+        title: { type: string }
+        description:
+          type: string
+          nullable: true
+        officialMixUrl: { type: string }
+        isCurrent: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    VersionWithMerges:
+      allOf:
+        - $ref: "#/components/schemas/Version"
+        - type: object
+          required: [merges]
+          properties:
+            merges:
+              type: array
+              items: { $ref: "#/components/schemas/VersionMerge" }
+
+    VersionMerge:
+      type: object
+      required: [id, versionId, commitId, contributorId, createdAt, contributor, commitTitle, instrumentType]
+      properties:
+        id: { type: string, format: uuid }
+        versionId: { type: string, format: uuid }
+        commitId: { type: string, format: uuid }
+        contributorId: { type: string, format: uuid }
+        mergeNote:
+          type: string
+          nullable: true
+        commitTitle: { type: string }
+        instrumentType: { type: string }
+        contributor: { $ref: "#/components/schemas/ContributorLite" }
+        createdAt: { type: string, format: date-time }
+
+    CreditEntry:
+      type: object
+      required: [contributor, commitId, commitTitle, instrumentType, versionNumber, versionId, versionTitle, mergedAt]
+      properties:
+        contributor: { $ref: "#/components/schemas/ContributorLite" }
+        commitId: { type: string, format: uuid }
+        commitTitle: { type: string }
+        instrumentType: { type: string }
+        versionNumber: { type: integer }
+        versionId: { type: string, format: uuid }
+        versionTitle: { type: string }
+        mergeNote:
+          type: string
+          nullable: true
+        mergedAt: { type: string, format: date-time }
+
+    VoteResult:
+      type: object
+      required: [commitId, voteCount, hasVoted]
+      properties:
+        commitId: { type: string, format: uuid }
+        voteCount: { type: integer }
+        hasVoted: { type: boolean }
+
+    PublicStats:
+      type: object
+      required: [totalSongs, totalCommits, totalVotes, totalMergedContributors, genres]
+      properties:
+        totalSongs: { type: integer }
+        totalCommits: { type: integer }
+        totalVotes: { type: integer }
+        totalMergedContributors: { type: integer }
+        genres:
+          type: array
+          items: { $ref: "#/components/schemas/GenreStat" }
+
+    GenreStat:
+      type: object
+      required: [genre, songCount, commitCount]
+      properties:
+        genre: { type: string }
+        songCount: { type: integer }
+        commitCount: { type: integer }
+
+    AdminStats:
+      type: object
+      required: [totalSubmissions, totalVotes, activeRounds, pendingCommits, topContributors]
+      properties:
+        totalSubmissions: { type: integer }
+        totalVotes: { type: integer }
+        activeRounds: { type: integer }
+        pendingCommits: { type: integer }
+        topContributors:
+          type: array
+          items: { $ref: "#/components/schemas/TopContributor" }
+
+    TopContributor:
+      type: object
+      required: [contributor, mergedCount, totalCommits, totalVotes]
+      properties:
+        contributor: { $ref: "#/components/schemas/ContributorLite" }
+        mergedCount: { type: integer }
+        totalCommits: { type: integer }
+        totalVotes: { type: integer }
+
+    CreateSongBody:
+      type: object
+      required: [slug, title, creatorName, genre, bpm, musicalKey]
+      properties:
+        slug: { type: string }
+        title: { type: string }
+        description: { type: string }
+        creatorName: { type: string }
+        genre: { type: string }
+        bpm: { type: integer }
+        musicalKey: { type: string }
+        timeSignature: { type: string }
+        status: { type: string, enum: [draft, active, archived] }
+
+    UpdateSongBody:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        creatorName: { type: string }
+        genre: { type: string }
+        bpm: { type: integer }
+        musicalKey: { type: string }
+        timeSignature: { type: string }
+        status: { type: string, enum: [draft, active, archived] }
+        coverImageUrl: { type: string }
+
+    CreateRoundBody:
+      type: object
+      required: [songId, title, allowedInstrumentType]
+      properties:
+        songId: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        allowedInstrumentType: { type: string }
+        status: { type: string, enum: [draft, open, closed, merged] }
+        opensAt: { type: string, format: date-time }
+        closesAt: { type: string, format: date-time }
+
+    SubmitCommitBody:
+      type: object
+      required: [roundId, title, instrumentType, audioObjectPath, confirmedHumanMade, confirmedRightsGrant]
+      properties:
+        roundId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        note: { type: string, maxLength: 500 }
+        instrumentType: { type: string }
+        audioObjectPath: { type: string }
+        displayNameOverride: { type: string }
+        socialHandle: { type: string }
+        confirmedHumanMade: { type: boolean }
+        confirmedRightsGrant: { type: boolean }
+
+    AdminAddSongFileBody:
+      type: object
+      required: [fileType, label, fileObjectPath, originalFilename]
+      properties:
+        fileType:
+          type: string
+          enum: [official_mix, stem, click, preview, cover, other]
+        label: { type: string }
+        fileObjectPath: { type: string }
+        originalFilename: { type: string }
+        sizeBytes: { type: integer }
+
+    AdminCreateVersionBody:
+      type: object
+      required: [songId, title, officialMixObjectPath, mergedCommitIds]
+      properties:
+        songId: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        mergeNote: { type: string }
+        officialMixObjectPath: { type: string }
+        mergedCommitIds:
+          type: array
+          items: { type: string, format: uuid }
+
+    RequestUploadUrlBody:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name: { type: string }
+        size: { type: integer }
+        contentType: { type: string }
+
+    RequestUploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL: { type: string }
+        objectPath: { type: string }
+        metadata:
+          type: object
+          properties:
+            name: { type: string }
+            size: { type: integer }
+            contentType: { type: string }
+
+    UpdateRoundBody:
+      type: object
+      properties:
+        title: { type: string }
+        description: { type: string }
+        allowedInstrumentType: { type: string }
+        status: { type: string, enum: [draft, open, closed, merged] }
+        opensAt: { type: string, format: date-time }
+        closesAt: { type: string, format: date-time }
