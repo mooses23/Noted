@@ -9,16 +9,33 @@ import {
   votesTable,
 } from "@workspace/db";
 import { and, eq, desc, sql } from "drizzle-orm";
+import { z } from "zod";
 import { toSong, toSongFile, toRound, toVersion } from "../lib/shapes";
 
 const router: IRouter = Router();
 
+const SongsListQuery = z.object({
+  genre: z.string().min(1).optional(),
+  status: z
+    .enum(["draft", "active", "archived"], {
+      errorMap: () => ({
+        message:
+          "status must be one of: draft, active, archived",
+      }),
+    })
+    .optional(),
+});
+
 router.get("/songs", async (req: Request, res: Response) => {
-  const genre = typeof req.query.genre === "string" ? req.query.genre : undefined;
-  const status =
-    typeof req.query.status === "string"
-      ? (req.query.status as "draft" | "active" | "archived")
-      : undefined;
+  const parsed = SongsListQuery.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: "Invalid query parameters",
+      details: parsed.error.issues,
+    });
+    return;
+  }
+  const { genre, status } = parsed.data;
   const conditions = [];
   if (genre) conditions.push(eq(songsTable.genre, genre));
   if (status) conditions.push(eq(songsTable.status, status));

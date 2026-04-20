@@ -7,11 +7,54 @@ import {
   profilesTable,
 } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
+import { z } from "zod";
 import { getSessionProfile, requireAuth } from "../lib/auth";
 import { fetchCommitRows, fetchCommitById, fetchMergedVersionForCommit } from "../lib/commitQueries";
 import { toCommitSummary, toRound, toVersion } from "../lib/shapes";
 import { SubmitCommitBody } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+
+const CommitsListQuery = z.object({
+  songId: z.string().min(1).optional(),
+  roundId: z.string().min(1).optional(),
+  status: z
+    .enum(["pending", "shortlisted", "merged", "rejected"], {
+      errorMap: () => ({
+        message:
+          "status must be one of: pending, shortlisted, merged, rejected",
+      }),
+    })
+    .optional(),
+  sort: z
+    .enum(["top", "newest"], {
+      errorMap: () => ({ message: "sort must be one of: top, newest" }),
+    })
+    .optional(),
+  limit: z.coerce
+    .number({ invalid_type_error: "limit must be a number" })
+    .int("limit must be an integer")
+    .min(1, "limit must be at least 1")
+    .max(200, "limit must be 200 or less")
+    .optional(),
+});
+
+const RisingCommitsQuery = z.object({
+  genre: z.string().min(1).optional(),
+  limit: z.coerce
+    .number({ invalid_type_error: "limit must be a number" })
+    .int("limit must be an integer")
+    .min(1, "limit must be at least 1")
+    .max(50, "limit must be 50 or less")
+    .optional(),
+});
+
+const RoundCommitsQuery = z.object({
+  sort: z
+    .enum(["top", "newest"], {
+      errorMap: () => ({ message: "sort must be one of: top, newest" }),
+    })
+    .optional(),
+});
 
 const MAX_COMMIT_AUDIO_BYTES = 60 * 1024 * 1024; // 60MB
 const ALLOWED_COMMIT_AUDIO_PREFIXES = ["audio/"];
@@ -20,9 +63,17 @@ const objectStorage = new ObjectStorageService();
 const router: IRouter = Router();
 
 router.get("/commits/rising", async (req: Request, res: Response) => {
+  const parsed = RisingCommitsQuery.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: "Invalid query parameters",
+      details: parsed.error.issues,
+    });
+    return;
+  }
+  const { genre, limit: limitInput } = parsed.data;
   const voter = await getSessionProfile(req);
-  const limit = Math.min(parseInt(String(req.query.limit ?? "6"), 10) || 6, 50);
-  const genre = typeof req.query.genre === "string" ? req.query.genre : undefined;
+  const limit = limitInput ?? 6;
 
   const conds = [eq(roundsTable.status, "open")];
   if (genre) conds.push(eq(songsTable.genre, genre));
@@ -36,16 +87,22 @@ router.get("/commits/rising", async (req: Request, res: Response) => {
 });
 
 router.get("/commits", async (req: Request, res: Response) => {
+  const parsed = CommitsListQuery.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: "Invalid query parameters",
+      details: parsed.error.issues,
+    });
+    return;
+  }
+  const { songId, roundId, status, sort: sortInput, limit: limitInput } = parsed.data;
   const voter = await getSessionProfile(req);
   const conds = [];
-  if (typeof req.query.songId === "string")
-    conds.push(eq(commitsTable.songId, req.query.songId));
-  if (typeof req.query.roundId === "string")
-    conds.push(eq(commitsTable.roundId, req.query.roundId));
-  if (typeof req.query.status === "string")
-    conds.push(eq(commitsTable.status, req.query.status as "pending" | "shortlisted" | "merged" | "rejected"));
-  const limit = Math.min(parseInt(String(req.query.limit ?? "50"), 10) || 50, 200);
-  const sort = req.query.sort === "top" ? "top" : "newest";
+  if (songId) conds.push(eq(commitsTable.songId, songId));
+  if (roundId) conds.push(eq(commitsTable.roundId, roundId));
+  if (status) conds.push(eq(commitsTable.status, status));
+  const limit = limitInput ?? 50;
+  const sort = sortInput ?? "newest";
 
   const rows = await fetchCommitRows(conds.length ? and(...conds) : undefined, {
     voterId: voter?.id,
@@ -56,8 +113,16 @@ router.get("/commits", async (req: Request, res: Response) => {
 });
 
 router.get("/rounds/:roundId/commits", async (req: Request, res: Response) => {
+  const parsed = RoundCommitsQuery.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({
+      error: "Invalid query parameters",
+      details: parsed.error.issues,
+    });
+    return;
+  }
   const voter = await getSessionProfile(req);
-  const sort = req.query.sort === "newest" ? "newest" : "top";
+  const sort = parsed.data.sort ?? "top";
   const rows = await fetchCommitRows(eq(commitsTable.roundId, req.params.roundId as string), {
     voterId: voter?.id,
     sort,
