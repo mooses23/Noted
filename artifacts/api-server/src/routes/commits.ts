@@ -111,6 +111,23 @@ router.post("/commits/submit", requireAuth, async (req: Request, res: Response) 
     return;
   }
 
+  const [existing] = await db
+    .select({ id: commitsTable.id })
+    .from(commitsTable)
+    .where(
+      and(
+        eq(commitsTable.roundId, round.id),
+        eq(commitsTable.contributorId, profile.id),
+      ),
+    )
+    .limit(1);
+  if (existing) {
+    res.status(409).json({
+      error: "You have already submitted a commit to this round.",
+    });
+    return;
+  }
+
   // Optional: update profile social handle / display override
   if (body.displayNameOverride || body.socialHandle) {
     await db

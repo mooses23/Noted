@@ -67,6 +67,26 @@ router.delete(
   async (req: Request, res: Response) => {
     const commitId = req.params.commitId as string;
     const profile = (req as Request & { profile: { id: string } }).profile;
+
+    const [commit] = await db
+      .select()
+      .from(commitsTable)
+      .where(eq(commitsTable.id, commitId))
+      .limit(1);
+    if (!commit) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const [round] = await db
+      .select()
+      .from(roundsTable)
+      .where(eq(roundsTable.id, commit.roundId))
+      .limit(1);
+    if (round && round.status !== "open") {
+      res.status(400).json({ error: "Voting closed for this round" });
+      return;
+    }
+
     await db
       .delete(votesTable)
       .where(and(eq(votesTable.commitId, commitId), eq(votesTable.voterId, profile.id)));

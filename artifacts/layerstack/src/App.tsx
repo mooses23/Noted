@@ -14,6 +14,11 @@ import Commits from "./pages/commits";
 import CommitDetail from "./pages/commits/commit";
 import Credits from "./pages/credits";
 import Manifesto from "./pages/manifesto";
+import Rules from "./pages/rules";
+import Rights from "./pages/rights";
+import Privacy from "./pages/privacy";
+import Terms from "./pages/terms";
+import Profile from "./pages/profile";
 import AdminDashboard from "./pages/admin";
 import AdminSongs from "./pages/admin/songs";
 import AdminSongDetail from "./pages/admin/songs/song";
@@ -110,14 +115,19 @@ function ClerkQueryClientCacheInvalidator() {
   return null;
 }
 
-function AdminRoute({ component: Component, ...rest }: any) {
+type AdminRouteProps = {
+  component: React.ComponentType<{ params: Record<string, string | undefined> }>;
+  params?: Record<string, string | undefined>;
+};
+
+function AdminRoute({ component: Component, params }: AdminRouteProps) {
   const { data: user, isLoading } = useGetCurrentUser();
   const { isSignedIn, isLoaded } = useUser();
 
   if (!isLoaded || isLoading) return <div className="p-8 text-muted-foreground">Loading...</div>;
   if (!isSignedIn || !user?.profile?.isAdmin) return <Redirect to="/" />;
 
-  return <Component {...rest} />;
+  return <Component params={params ?? {}} />;
 }
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -183,6 +193,8 @@ function Layout({ children }: { children: React.ReactNode }) {
               <li><Link href="/manifesto" className="hover:text-foreground transition-colors">Manifesto</Link></li>
               <li><Link href="/rules" className="hover:text-foreground transition-colors">Rules</Link></li>
               <li><Link href="/rights" className="hover:text-foreground transition-colors">Rights & Licensing</Link></li>
+              <li><Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link></li>
+              <li><Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link></li>
             </ul>
           </div>
         </div>
@@ -227,7 +239,12 @@ function ClerkProviderWithRoutes() {
             
             <Route path="/credits" component={Credits} />
             <Route path="/manifesto" component={Manifesto} />
-            
+            <Route path="/rules" component={Rules} />
+            <Route path="/rights" component={Rights} />
+            <Route path="/privacy" component={Privacy} />
+            <Route path="/terms" component={Terms} />
+            <Route path="/profile" component={Profile} />
+
             {/* Admin Routes */}
             <Route path="/admin">
               {(params) => <AdminRoute component={AdminDashboard} params={params} />}

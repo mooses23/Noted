@@ -1,5 +1,5 @@
 import { useParams, Link } from "wouter";
-import { useGetSongBySlug, useListRoundsForSong, useListVersionsForSong, useListCommitsForRound, useGetPublicStats } from "@workspace/api-client-react";
+import { useGetSongBySlug, useListRoundsForSong, useListVersionsForSong, useListCommitsForRound, useGetPublicStats, getGetSongBySlugQueryKey, getListCommitsForRoundQueryKey, ListCommitsForRoundSort } from "@workspace/api-client-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { Button } from "@/components/ui/button";
 import { Disc3, Download, Clock, Users, ArrowRight, Play, FileAudio } from "lucide-react";
@@ -10,14 +10,10 @@ export default function SongDetail() {
   const slug = params.slug || "";
   
   const { data: song, isLoading: isSongLoading } = useGetSongBySlug(slug, { 
-    query: { enabled: !!slug, queryKey: ["/api/songs/by-slug", slug] as any } 
+    query: { enabled: !!slug, queryKey: getGetSongBySlugQueryKey(slug) } 
   });
-  
-  // Actually, wait, useGetSongBySlug uses queryKey getGetSongBySlugQueryKey.
-  // The correct pattern is:
-  // useGetSongBySlug(slug, { query: { enabled: !!slug, queryKey: getGetSongBySlugQueryKey(slug) } })
-  // But wait, the prompt says: import getGetSongBySlugQueryKey... Let me just use the hook directly if it works, or I can import the query key.
-  
+
+
   if (isSongLoading) {
     return <div className="container mx-auto px-6 py-12"><div className="h-96 bg-card border border-border animate-pulse" /></div>;
   }
@@ -171,8 +167,9 @@ export default function SongDetail() {
 }
 
 function CommitsList({ roundId }: { roundId: string }) {
-  const { data: commits, isLoading } = useListCommitsForRound(roundId, { sort: "top" } as any, {
-    query: { enabled: !!roundId, queryKey: ["/api/rounds", roundId, "commits"] as any }
+  const params = { sort: ListCommitsForRoundSort.top };
+  const { data: commits, isLoading } = useListCommitsForRound(roundId, params, {
+    query: { enabled: !!roundId, queryKey: getListCommitsForRoundQueryKey(roundId, params) }
   });
 
   if (isLoading) return <div className="space-y-4">{[1,2,3].map(i => <div key={i} className="h-24 bg-card border border-border animate-pulse" />)}</div>;
