@@ -10,9 +10,12 @@ import {
   versionMergesTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { uploadSeedAudio } from "./lib/seed-audio";
 
 async function main() {
   console.log("Seeding LayerStack...");
+
+  await uploadSeedAudio();
 
   // 1. Profiles
   const profileSeeds = [
