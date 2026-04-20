@@ -33,7 +33,7 @@ app.use(
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-const corsAllowlist = (process.env.CORS_ALLOWED_ORIGINS ?? "")
+const corsAllowlist = (process.env.ALLOWED_ORIGINS ?? "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);

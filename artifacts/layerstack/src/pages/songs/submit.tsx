@@ -150,15 +150,21 @@ export default function SubmitCommit() {
             <div className="border-2 border-dashed border-border p-12 text-center relative hover:border-primary/50 transition-colors">
               <input 
                 type="file" 
-                accept="audio/*" 
+                accept="audio/*,.wav,.flac,.aiff,.aif,.mp3,.m4a,.ogg,.opus,.aac,.wma" 
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 onChange={(e) => {
-                  if (e.target.files?.[0]) setAudioFile(e.target.files[0]);
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (file.size > 60 * 1024 * 1024) {
+                    toast({ title: "File too large", description: `Max 60 MB. Yours is ${(file.size / (1024*1024)).toFixed(1)} MB.`, variant: "destructive" });
+                    return;
+                  }
+                  setAudioFile(file);
                 }}
               />
               <UploadCloud className="w-8 h-8 mx-auto mb-4 text-muted-foreground" />
               <div className="font-bold mb-1">Click or drag audio file here</div>
-              <div className="text-sm text-muted-foreground">WAV, FLAC, AIFF, or high-res MP3 (Max 50MB)</div>
+              <div className="text-sm text-muted-foreground">WAV, FLAC, AIFF, MP3, M4A, OGG, AAC (Max 60 MB)</div>
             </div>
           ) : (
             <div className="border border-border p-4 bg-background flex flex-col gap-4">

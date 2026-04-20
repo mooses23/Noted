@@ -1,9 +1,13 @@
 import { useParams, Link } from "wouter";
-import { useGetSongBySlug, useListRoundsForSong, useListVersionsForSong, useListCommitsForRound, useGetPublicStats, getGetSongBySlugQueryKey, getListCommitsForRoundQueryKey, ListCommitsForRoundSort } from "@workspace/api-client-react";
+import { useGetSongBySlug, useListCommitsForRound, getGetSongBySlugQueryKey, getListCommitsForRoundQueryKey, ListCommitsForRoundSort, useVoteOnCommit, useUnvoteCommit, useGetCurrentUser } from "@workspace/api-client-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { Button } from "@/components/ui/button";
-import { Disc3, Download, Clock, Users, ArrowRight, Play, FileAudio } from "lucide-react";
+import { Disc3, Download, Clock, ThumbsUp, FileAudio } from "lucide-react";
 import { format } from "date-fns";
+import { storageUrl } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import { CoverImage } from "@/components/CoverImage";
 
 export default function SongDetail() {
   const params = useParams();
@@ -26,17 +30,12 @@ export default function SongDetail() {
     <div className="flex flex-col">
       <section className="border-b border-border bg-card">
         <div className="container mx-auto px-6 py-12 md:py-20 flex flex-col md:flex-row gap-8 lg:gap-16">
-          {song.coverImageUrl ? (
-            <img 
-              src={song.coverImageUrl} 
-              alt={song.title} 
-              className="w-48 h-48 md:w-64 md:h-64 object-cover border border-border shadow-2xl flex-shrink-0"
-            />
-          ) : (
-            <div className="w-48 h-48 md:w-64 md:h-64 bg-secondary flex items-center justify-center border border-border shadow-2xl flex-shrink-0">
-              <Disc3 className="w-16 h-16 text-muted-foreground" />
-            </div>
-          )}
+          <CoverImage
+            url={song.coverImageUrl}
+            alt={song.title}
+            className="w-48 h-48 md:w-64 md:h-64 border border-border shadow-2xl flex-shrink-0"
+            iconSize="w-16 h-16"
+          />
           
           <div className="flex-1 min-w-0 flex flex-col justify-center">
             <div className="text-xs uppercase tracking-widest text-primary mb-3">
@@ -168,33 +167,69 @@ export default function SongDetail() {
 
 function CommitsList({ roundId }: { roundId: string }) {
   const params = { sort: ListCommitsForRoundSort.top };
+  const queryKey = getListCommitsForRoundQueryKey(roundId, params);
   const { data: commits, isLoading } = useListCommitsForRound(roundId, params, {
-    query: { enabled: !!roundId, queryKey: getListCommitsForRoundQueryKey(roundId, params) }
+    query: { enabled: !!roundId, queryKey }
   });
+  const { data: user } = useGetCurrentUser();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const voteMutation = useVoteOnCommit();
+  const unvoteMutation = useUnvoteCommit();
+
+  const toggleVote = (commitId: string, hasVoted: boolean) => {
+    if (!user?.authenticated) {
+      toast({ title: "Sign in required", description: "You must be signed in to vote.", variant: "destructive" });
+      return;
+    }
+    const mutation = hasVoted ? unvoteMutation : voteMutation;
+    mutation.mutate({ commitId }, {
+      onSuccess: (res) => {
+        queryClient.setQueryData<typeof commits>(queryKey, (old) =>
+          old?.map((c) => (c.id === commitId ? { ...c, hasVoted: !hasVoted, voteCount: res.voteCount } : c)),
+        );
+      },
+      onError: (err) => {
+        toast({ title: "Vote failed", description: err.message, variant: "destructive" });
+      },
+    });
+  };
 
   if (isLoading) return <div className="space-y-4">{[1,2,3].map(i => <div key={i} className="h-24 bg-card border border-border animate-pulse" />)}</div>;
   if (!commits?.length) return <div className="p-8 text-center border border-border bg-card text-muted-foreground">No submissions yet. Be the first!</div>;
 
   return (
     <div className="space-y-4">
-      {commits.map(commit => (
-        <div key={commit.id} className="bg-card border border-border p-4 flex flex-col gap-4">
-          <div className="flex justify-between items-start">
-            <div>
-              <h4 className="font-bold font-serif mb-1">
-                <Link href={`/commits/${commit.id}`} className="hover:text-primary">{commit.title}</Link>
-              </h4>
-              <div className="text-sm text-muted-foreground flex items-center gap-2">
-                <span>By {commit.contributor.displayName}</span>
+      {commits.map(commit => {
+        const isOwner = !!user?.profile?.id && user.profile.id === commit.contributorId;
+        const isPending = (voteMutation.isPending || unvoteMutation.isPending) && (voteMutation.variables?.commitId === commit.id || unvoteMutation.variables?.commitId === commit.id);
+        return (
+          <div key={commit.id} className="bg-card border border-border p-4 flex flex-col gap-4">
+            <div className="flex justify-between items-start gap-4">
+              <div className="min-w-0">
+                <h4 className="font-bold font-serif mb-1">
+                  <Link href={`/commits/${commit.id}`} className="hover:text-primary">{commit.title}</Link>
+                </h4>
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  <span>By {commit.contributor.displayName}</span>
+                </div>
               </div>
+              <Button
+                variant={commit.hasVoted ? "default" : "outline"}
+                size="sm"
+                className="rounded-none uppercase tracking-widest text-xs h-9 px-3 flex items-center gap-2 flex-shrink-0"
+                onClick={() => toggleVote(commit.id, !!commit.hasVoted)}
+                disabled={isOwner || isPending}
+                title={isOwner ? "You can't vote on your own commit" : ""}
+              >
+                <ThumbsUp className={`w-3 h-3 ${commit.hasVoted ? "fill-current" : ""}`} />
+                <span className="font-mono">{commit.voteCount}</span>
+              </Button>
             </div>
-            <div className="text-xs px-2 py-1 bg-secondary text-secondary-foreground font-mono">
-              {commit.voteCount} votes
-            </div>
+            <AudioPlayer url={commit.audioFileUrl} title={commit.title} className="bg-background border-border p-2" />
           </div>
-          <AudioPlayer url={commit.audioFileUrl} title={commit.title} className="bg-background border-border p-2" />
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

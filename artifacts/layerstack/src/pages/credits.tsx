@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { format } from "date-fns";
 import { useListCommits } from "@workspace/api-client-react";
 import { Disc3 } from "lucide-react";
+import { storageUrl } from "@/lib/utils";
 
 export default function Credits() {
   return <CreditsWall />;
@@ -32,7 +33,7 @@ function CreditsWall() {
             <div key={commit.id} className="bg-card border border-border p-6 flex flex-col hover:border-primary/50 transition-colors">
               <div className="flex items-center gap-4 mb-4">
                 {commit.contributor.avatarUrl ? (
-                  <img src={commit.contributor.avatarUrl} alt={commit.contributor.displayName} className="w-12 h-12 object-cover border border-border" />
+                  <img src={storageUrl(commit.contributor.avatarUrl)} alt={commit.contributor.displayName} className="w-12 h-12 object-cover border border-border" />
                 ) : (
                   <div className="w-12 h-12 bg-secondary flex items-center justify-center border border-border text-lg font-serif">
                     {commit.contributor.displayName.charAt(0).toUpperCase()}
