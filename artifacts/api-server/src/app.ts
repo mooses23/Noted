@@ -49,7 +49,10 @@ app.use(
       // Non-browser or same-origin (no Origin header): allow.
       if (!origin) return cb(null, true);
       if (corsAllowlist.length === 0) {
-        // Dev fallback: allow when no explicit allowlist configured.
+        if (process.env.NODE_ENV === "production") {
+          return cb(new Error("CORS: allowlist not configured"));
+        }
+        // Dev fallback only: allow when no explicit allowlist configured.
         return cb(null, true);
       }
       if (corsAllowlist.includes(origin)) return cb(null, true);

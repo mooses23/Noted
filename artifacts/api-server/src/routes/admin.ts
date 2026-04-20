@@ -258,6 +258,16 @@ router.post("/versions", async (req: Request, res: Response) => {
         .from(commitsTable)
         .where(inArray(commitsTable.id, b.mergedCommitIds));
 
+      if (mergedCommits.length !== b.mergedCommitIds.length) {
+        throw new Error("One or more merged commit IDs do not exist.");
+      }
+      const foreign = mergedCommits.filter((c) => c.songId !== b.songId);
+      if (foreign.length > 0) {
+        throw new Error(
+          `Merged commits must belong to song ${b.songId}; found ${foreign.length} foreign commit(s).`,
+        );
+      }
+
       for (const c of mergedCommits) {
         await tx.insert(versionMergesTable).values({
           versionId: version!.id,
