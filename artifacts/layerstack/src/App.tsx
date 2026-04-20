@@ -134,6 +134,7 @@ function AdminRoute({ component: Component, params }: AdminRouteProps) {
 
 function Layout({ children }: { children: React.ReactNode }) {
   const { data: user } = useGetCurrentUser();
+  const clerk = useClerk();
   
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background text-foreground font-sans">
@@ -157,7 +158,7 @@ function Layout({ children }: { children: React.ReactNode }) {
             )}
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">{user?.profile?.displayName}</span>
-              <button onClick={() => (window as unknown as { Clerk?: { signOut: () => void } }).Clerk?.signOut()} className="text-xs uppercase tracking-widest hover:text-muted-foreground transition-colors">
+              <button onClick={() => clerk.signOut()} className="text-xs uppercase tracking-widest hover:text-muted-foreground transition-colors">
                 Sign Out
               </button>
             </div>

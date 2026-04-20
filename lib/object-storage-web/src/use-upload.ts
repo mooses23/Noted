@@ -146,7 +146,8 @@ export function useUpload(options: UseUploadOptions = {}) {
 
   const getUploadParameters = useCallback(
     async (
-      file: UppyFile<Record<string, unknown>, Record<string, unknown>>
+      file: UppyFile<Record<string, unknown>, Record<string, unknown>>,
+      intent: UploadIntent,
     ): Promise<{
       method: "PUT";
       url: string;
@@ -161,6 +162,9 @@ export function useUpload(options: UseUploadOptions = {}) {
           name: file.name,
           size: file.size,
           contentType: file.type || "application/octet-stream",
+          purpose: intent.purpose,
+          ...(intent.songId ? { songId: intent.songId } : {}),
+          ...(intent.roundId ? { roundId: intent.roundId } : {}),
         }),
       });
 
