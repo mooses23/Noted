@@ -48,7 +48,7 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
           res.status(400).json({ error: "songId is required for official-mix uploads." });
           return;
         }
-        prefix = `songs/${songId}/official`;
+        prefix = `songs/${songId}/versions`;
         break;
       case "stem":
         if (!songId) {
@@ -65,11 +65,11 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
         prefix = `songs/${songId}/cover`;
         break;
       case "commit-audio":
-        if (!roundId) {
-          res.status(400).json({ error: "roundId is required for commit-audio uploads." });
+        if (!songId || !roundId) {
+          res.status(400).json({ error: "songId and roundId are required for commit-audio uploads." });
           return;
         }
-        prefix = `rounds/${roundId}/commits`;
+        prefix = `songs/${songId}/rounds/${roundId}/commits`;
         break;
       case "avatar":
         prefix = `avatars`;
