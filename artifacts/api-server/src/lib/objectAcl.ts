@@ -105,7 +105,9 @@ export async function canAccessObject({
 }): Promise<boolean> {
   const aclPolicy = await getObjectAclPolicy(objectFile);
   if (!aclPolicy) {
-    return false;
+    // V1: uploads that don't declare an ACL are treated as public-readable.
+    // Write/admin operations still require auth at the route level.
+    return requestedPermission === ObjectPermission.READ;
   }
 
   if (

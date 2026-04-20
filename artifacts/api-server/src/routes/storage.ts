@@ -97,13 +97,16 @@ router.get("/storage/public-objects/*filePath", async (req: Request, res: Respon
  * These are served from a separate path from /public-objects and can optionally
  * be protected with authentication or ACL checks based on the use case.
  */
-router.get("/storage/objects/*path", requireAuth, async (req: Request, res: Response) => {
+router.get("/storage/objects/*path", async (req: Request, res: Response) => {
   try {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
     const objectPath = `/objects/${wildcardPath}`;
     const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
 
+    // Audio and images on LayerStack are public-by-default; if an object has
+    // an ACL policy attached, it is enforced. Objects without a policy are
+    // treated as public-readable (see objectAcl.ts).
     const profile = (req as Request & { profile?: { id: string } }).profile;
     const canAccess = await objectStorageService.canAccessObjectEntity({
       userId: profile?.id,
