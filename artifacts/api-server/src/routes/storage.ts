@@ -31,6 +31,18 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
   try {
     const { name, size, contentType, purpose, songId, roundId } = parsed.data;
 
+    // Admin-only upload purposes. Regular authenticated users can only upload
+    // commit audio and their own avatar; anything that lives in the official
+    // song namespace (versions, stems, cover art) must go through an admin.
+    const ADMIN_ONLY_PURPOSES = new Set(["official-mix", "stem", "cover"]);
+    if (ADMIN_ONLY_PURPOSES.has(purpose)) {
+      const profile = await getSessionProfile(req);
+      if (!profile?.isAdmin) {
+        res.status(403).json({ error: "Admin required for this upload purpose." });
+        return;
+      }
+    }
+
     if (size > MAX_UPLOAD_BYTES) {
       res.status(400).json({ error: `File too large. Max ${MAX_UPLOAD_BYTES} bytes.` });
       return;
