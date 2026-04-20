@@ -1,6 +1,7 @@
 import { useParams, Link } from "wouter";
 import { useGetCommit, useVoteOnCommit, useUnvoteCommit } from "@workspace/api-client-react";
 import { getGetCommitQueryKey } from "@workspace/api-client-react";
+import type { CommitDetail } from "@workspace/api-client-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { Button } from "@/components/ui/button";
 import { ThumbsUp, Disc3, Calendar, ShieldCheck } from "lucide-react";
@@ -25,16 +26,18 @@ export default function CommitDetail() {
     if (commit.hasVoted) {
       unvoteMutation.mutate({ commitId }, {
         onSuccess: (res) => {
-          queryClient.setQueryData(getGetCommitQueryKey(commitId), (old: any) => 
-            old ? { ...old, hasVoted: false, voteCount: res.voteCount } : old
+          queryClient.setQueryData<CommitDetail>(
+            getGetCommitQueryKey(commitId),
+            (old) => (old ? { ...old, hasVoted: false, voteCount: res.voteCount } : old),
           );
         }
       });
     } else {
       voteMutation.mutate({ commitId }, {
         onSuccess: (res) => {
-          queryClient.setQueryData(getGetCommitQueryKey(commitId), (old: any) => 
-            old ? { ...old, hasVoted: true, voteCount: res.voteCount } : old
+          queryClient.setQueryData<CommitDetail>(
+            getGetCommitQueryKey(commitId),
+            (old) => (old ? { ...old, hasVoted: true, voteCount: res.voteCount } : old),
           );
         }
       });

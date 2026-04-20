@@ -65,6 +65,16 @@ async function main() {
   }
   const songId = song!.id;
 
+  // Ensure a seeded cover URL is attached to the song record.
+  const seededCoverUrl = `/objects/songs/${songId}/cover/the-long-room-cover.jpg`;
+  if (song!.coverImageUrl !== seededCoverUrl) {
+    await db
+      .update(songsTable)
+      .set({ coverImageUrl: seededCoverUrl, updatedAt: new Date() })
+      .where(eq(songsTable.id, songId));
+    song!.coverImageUrl = seededCoverUrl;
+  }
+
   // 3. Version 1 — the seed
   let [v1] = await db
     .select()
@@ -96,6 +106,14 @@ async function main() {
     .where(eq(songFilesTable.songId, songId));
   if (existingFiles.length === 0) {
     await db.insert(songFilesTable).values([
+      {
+        songId,
+        fileType: "cover",
+        label: "Cover art",
+        fileUrl: `/objects/songs/${songId}/cover/the-long-room-cover.jpg`,
+        originalFilename: "the-long-room-cover.jpg",
+        sizeBytes: 420_000,
+      },
       {
         songId,
         fileType: "preview",
