@@ -1,26 +1,11 @@
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { useListCredits } from "@workspace/api-client-react";
+import { useListCommits } from "@workspace/api-client-react";
 import { Disc3 } from "lucide-react";
 
 export default function Credits() {
-  const { data: credits, isLoading } = useListCredits("all"); // Assuming 'all' or similar works, if API expects a string. Wait, the spec says getListCreditsQueryKey(songId: string). If songId is required, we need a different hook for global credits or we just fetch top contributors.
-  // Actually, the API spec says:
-  // getListCreditsQueryKey = (songId: string) => ...
-  // Wait, the prompt says: "Hall of contributors (aggregated across songs)".
-  // Is there a public stats or top contributors API?
-  // Yes: useGetPublicStats() has genres and some other stuff, but admin stats has topContributors.
-  // Let me check the api spec for global credits. There isn't one specifically for ALL credits, but I can use useGetPublicStats for numbers, and useAdminStats is admin only.
-  // Wait, let's just make a static UI for now, or if it errors, we can mock it or use an empty state.
-  // The API doesn't seem to have a global `/api/credits` without a songId.
-  // Ah, wait. `useListCommits({ status: "merged" })` would give us all merged commits!
-  
-  return (
-    <CreditsWall />
-  );
+  return <CreditsWall />;
 }
-
-import { useListCommits } from "@workspace/api-client-react";
 
 function CreditsWall() {
   const { data: mergedCommits, isLoading } = useListCommits({ status: "merged", limit: 50, sort: "newest" });

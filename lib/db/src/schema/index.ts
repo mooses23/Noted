@@ -163,6 +163,7 @@ export const commitsTable = pgTable(
     index("commits_round_idx").on(t.roundId),
     index("commits_song_idx").on(t.songId),
     index("commits_contributor_idx").on(t.contributorId),
+    uniqueIndex("commits_round_contributor_uq").on(t.roundId, t.contributorId),
   ],
 );
 
