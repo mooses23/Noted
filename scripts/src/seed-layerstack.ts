@@ -96,6 +96,8 @@ async function main() {
         isCurrent: false,
       })
       .returning();
+    // The v1 mix is "Evening Fall (Piano)" by Kevin MacLeod, CC BY 3.0
+    // (see scripts/src/lib/seed-audio-credits.md).
     await db
       .update(songsTable)
       .set({ currentVersionId: v1!.id })
@@ -123,31 +125,31 @@ async function main() {
         label: "Current mix — v1",
         fileUrl: "/objects/seed/the-long-room-v1.mp3",
         originalFilename: "the-long-room-v1.mp3",
-        sizeBytes: 4_800_000,
+        sizeBytes: 5_397_796,
       },
       {
         songId,
         fileType: "stem",
         label: "Piano (L/R)",
-        fileUrl: "/objects/seed/stem-piano.wav",
-        originalFilename: "stem-piano.wav",
-        sizeBytes: 18_200_000,
+        fileUrl: "/objects/seed/stem-piano.mp3",
+        originalFilename: "stem-piano.mp3",
+        sizeBytes: 5_397_796,
       },
       {
         songId,
         fileType: "stem",
         label: "Lead Vocal",
-        fileUrl: "/objects/seed/stem-vocal.wav",
-        originalFilename: "stem-vocal.wav",
-        sizeBytes: 14_100_000,
+        fileUrl: "/objects/seed/stem-vocal.mp3",
+        originalFilename: "stem-vocal.mp3",
+        sizeBytes: 7_572_292,
       },
       {
         songId,
         fileType: "click",
         label: "Click @ 72 bpm",
-        fileUrl: "/objects/seed/click-72.wav",
-        originalFilename: "click-72.wav",
-        sizeBytes: 3_400_000,
+        fileUrl: "/objects/seed/click-72.mp3",
+        originalFilename: "click-72.mp3",
+        sizeBytes: 3_542_354,
       },
     ]);
   }
@@ -190,7 +192,7 @@ async function main() {
         title: "Upright, walking under the verses",
         note: "Tried to stay out of the way of the piano. One take, a little breath on the low D.",
         instrumentType: "bass",
-        audioFileUrl: "/objects/seed/commit-jules-bass.wav",
+        audioFileUrl: "/objects/seed/commit-jules-bass.mp3",
         status: "merged",
         confirmedHumanMade: true,
         confirmedRightsGrant: true,
@@ -218,7 +220,7 @@ async function main() {
         versionNumber: 2,
         title: "v2 — Bass in",
         description: "Jules's upright. Felt like it had always been there.",
-        officialMixUrl: "/objects/seed/the-long-room-v2.mp3",
+        officialMixUrl: "/objects/seed/the-long-room-v2.mp3", // "Crinoline Dreams" — Kevin MacLeod, CC BY 3.0
         isCurrent: true,
       })
       .returning();
@@ -263,31 +265,31 @@ async function main() {
       contributor: kenji!,
       title: "Brushes, tea-cup tempo",
       note: "Tried to match the breath of the vocal. 72 bpm, brushes on a felted snare.",
-      url: "/objects/seed/commit-kenji-drums.wav",
+      url: "/objects/seed/commit-kenji-drums.mp3",
     },
     {
       contributor: sade!,
       title: "Felt mallets on a floor tom",
       note: "No hats, no snare. Just a heartbeat underneath.",
-      url: "/objects/seed/commit-sade-drums.wav",
+      url: "/objects/seed/commit-sade-drums.mp3",
     },
     {
       contributor: thiago!,
       title: "Cajón + shakers",
       note: "For when it needs to feel a little warmer.",
-      url: "/objects/seed/commit-thiago-drums.wav",
+      url: "/objects/seed/commit-thiago-drums.mp3",
     },
     {
       contributor: ilse!,
       title: "Light sticks, ride-forward",
       note: "Old Zildjian A, played with the shoulder of the stick.",
-      url: "/objects/seed/commit-ilse-drums.wav",
+      url: "/objects/seed/commit-ilse-drums.mp3",
     },
     {
       contributor: dmitri!,
       title: "Minimal — kick, closed hat, rim",
       note: "Only where it has to be there. Leaves space for strings later.",
-      url: "/objects/seed/commit-dmitri-drums.wav",
+      url: "/objects/seed/commit-dmitri-drums.mp3",
     },
   ];
 
@@ -340,6 +342,49 @@ async function main() {
           .insert(votesTable)
           .values({ voterId: v.id, commitId: commit.id })
           .onConflictDoNothing();
+      }
+    }
+  }
+
+  // 10. URL sync — keep seeded rows pointing at the current .mp3 storage keys
+  //     even if a prior run wrote .wav URLs.
+  const urlSyncs: Array<[string, string]> = [
+    ["seed/the-long-room-v1.mp3", "/objects/seed/the-long-room-v1.mp3"],
+    ["seed/the-long-room-v2.mp3", "/objects/seed/the-long-room-v2.mp3"],
+    ["seed/stem-piano",  "/objects/seed/stem-piano.mp3"],
+    ["seed/stem-vocal",  "/objects/seed/stem-vocal.mp3"],
+    ["seed/click-72",    "/objects/seed/click-72.mp3"],
+    ["seed/commit-jules-bass",   "/objects/seed/commit-jules-bass.mp3"],
+    ["seed/commit-kenji-drums",  "/objects/seed/commit-kenji-drums.mp3"],
+    ["seed/commit-sade-drums",   "/objects/seed/commit-sade-drums.mp3"],
+    ["seed/commit-thiago-drums", "/objects/seed/commit-thiago-drums.mp3"],
+    ["seed/commit-ilse-drums",   "/objects/seed/commit-ilse-drums.mp3"],
+    ["seed/commit-dmitri-drums", "/objects/seed/commit-dmitri-drums.mp3"],
+  ];
+  const allFiles = await db.select().from(songFilesTable);
+  for (const f of allFiles) {
+    for (const [stem, target] of urlSyncs) {
+      if (f.fileUrl?.includes(stem) && f.fileUrl !== target) {
+        await db.update(songFilesTable).set({ fileUrl: target }).where(eq(songFilesTable.id, f.id));
+        break;
+      }
+    }
+  }
+  const allCommits = await db.select().from(commitsTable);
+  for (const c of allCommits) {
+    for (const [stem, target] of urlSyncs) {
+      if (c.audioFileUrl?.includes(stem) && c.audioFileUrl !== target) {
+        await db.update(commitsTable).set({ audioFileUrl: target }).where(eq(commitsTable.id, c.id));
+        break;
+      }
+    }
+  }
+  const allVersions = await db.select().from(versionsTable);
+  for (const v of allVersions) {
+    for (const [stem, target] of urlSyncs) {
+      if (v.officialMixUrl?.includes(stem) && v.officialMixUrl !== target) {
+        await db.update(versionsTable).set({ officialMixUrl: target }).where(eq(versionsTable.id, v.id));
+        break;
       }
     }
   }
