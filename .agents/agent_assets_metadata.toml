@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "tpWWAlEx4OfWxaSoE-M_I"
+uri = "file://artifacts/layerstack/public/images/hero-studio.png"
+type = "image"
+title = "Studio hero background"
+
+[[generated]]
+id = "Jk73OGJBigs2GYRVi4ZoJ"
+uri = "file://artifacts/layerstack/public/images/cover-1.png"
+type = "image"
+title = "Vinyl record cover art"
