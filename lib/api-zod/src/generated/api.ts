@@ -846,7 +846,10 @@ export const ListSongCommentsResponseItem = zod.object({
   id: zod.string().uuid(),
   songId: zod.string().uuid(),
   authorId: zod.string().uuid(),
+  parentCommentId: zod.string().uuid().nullish(),
   body: zod.string(),
+  deleted: zod.boolean(),
+  replyCount: zod.number(),
   createdAt: zod.coerce.date(),
   author: zod.object({
     id: zod.string().uuid(),
@@ -869,6 +872,7 @@ export const postSongCommentBodyBodyMax = 2000;
 
 export const PostSongCommentBody = zod.object({
   body: zod.string().min(1).max(postSongCommentBodyBodyMax),
+  parentCommentId: zod.string().uuid().nullish(),
 });
 
 /**
@@ -1695,7 +1699,10 @@ export const AdminListCommentReportsResponseItem = zod.object({
     id: zod.string().uuid(),
     songId: zod.string().uuid(),
     authorId: zod.string().uuid(),
+    parentCommentId: zod.string().uuid().nullish(),
     body: zod.string(),
+    deleted: zod.boolean(),
+    replyCount: zod.number(),
     createdAt: zod.coerce.date(),
     author: zod.object({
       id: zod.string().uuid(),

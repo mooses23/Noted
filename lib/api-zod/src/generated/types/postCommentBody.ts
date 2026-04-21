@@ -12,4 +12,5 @@ export interface PostCommentBody {
    * @maxLength 2000
    */
   body: string;
+  parentCommentId?: string | null;
 }

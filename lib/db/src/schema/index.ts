@@ -9,6 +9,7 @@ import {
   pgEnum,
   uniqueIndex,
   index,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -265,7 +266,12 @@ export const commentsTable = pgTable(
     authorId: uuid("author_id")
       .notNull()
       .references(() => profilesTable.id, { onDelete: "cascade" }),
+    parentCommentId: uuid("parent_comment_id").references(
+      (): AnyPgColumn => commentsTable.id,
+      { onDelete: "set null" },
+    ),
     body: text("body").notNull(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -273,6 +279,7 @@ export const commentsTable = pgTable(
   (t) => [
     index("comments_song_idx").on(t.songId),
     index("comments_author_idx").on(t.authorId),
+    index("comments_parent_idx").on(t.parentCommentId),
   ],
 );
 

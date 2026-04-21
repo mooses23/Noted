@@ -7,7 +7,7 @@ import {
   profilesTable,
   adminActionsTable,
 } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray, sql, and, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuth } from "../lib/auth";
 import { toComment } from "../lib/shapes";
@@ -27,6 +27,7 @@ const PostCommentBody = z.object({
     .string()
     .min(1, "Comment cannot be empty")
     .max(2000, "Comment must be 2000 characters or fewer"),
+  parentCommentId: z.string().uuid().nullish(),
 });
 
 const ReportCommentBody = z.object({
@@ -52,7 +53,28 @@ router.get("/songs/:songId/comments", async (req: Request, res: Response) => {
     .where(eq(commentsTable.songId, songId))
     .orderBy(desc(commentsTable.createdAt));
 
-  res.json(rows.map((r) => toComment(r.comment, r.author)));
+  // Compute reply counts per comment id
+  const ids = rows.map((r) => r.comment.id);
+  const replyCounts = new Map<string, number>();
+  if (ids.length > 0) {
+    const counts = await db
+      .select({
+        parentId: commentsTable.parentCommentId,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(commentsTable)
+      .where(inArray(commentsTable.parentCommentId, ids))
+      .groupBy(commentsTable.parentCommentId);
+    for (const c of counts) {
+      if (c.parentId) replyCounts.set(c.parentId, Number(c.count));
+    }
+  }
+
+  res.json(
+    rows.map((r) =>
+      toComment(r.comment, r.author, replyCounts.get(r.comment.id) ?? 0),
+    ),
+  );
 });
 
 router.post(
@@ -104,12 +126,32 @@ router.post(
       return;
     }
 
+    let parentCommentId: string | null = null;
+    if (parsed.data.parentCommentId) {
+      const [parent] = await db
+        .select({
+          id: commentsTable.id,
+          songId: commentsTable.songId,
+          parentCommentId: commentsTable.parentCommentId,
+        })
+        .from(commentsTable)
+        .where(eq(commentsTable.id, parsed.data.parentCommentId))
+        .limit(1);
+      if (!parent || parent.songId !== songId) {
+        res.status(400).json({ error: "Parent comment not found on this song" });
+        return;
+      }
+      // Flatten: replies always attach to a top-level comment
+      parentCommentId = parent.parentCommentId ?? parent.id;
+    }
+
     const [created] = await db
       .insert(commentsTable)
       .values({
         songId,
         authorId: profile.id,
         body: filter.sanitized,
+        parentCommentId,
       })
       .returning();
 
@@ -135,7 +177,7 @@ router.post(
       );
     });
 
-    res.status(201).json(toComment(created!, author!));
+    res.status(201).json(toComment(created!, author!, 0));
   },
 );
 
@@ -163,7 +205,27 @@ router.delete(
       return;
     }
 
-    await db.delete(commentsTable).where(eq(commentsTable.id, commentId));
+    // If this comment has live (non-deleted) replies, leave a tombstone so
+    // the thread context is preserved. Otherwise hard-delete.
+    const [{ replyCount }] = await db
+      .select({ replyCount: sql<number>`count(*)::int` })
+      .from(commentsTable)
+      .where(
+        and(
+          eq(commentsTable.parentCommentId, commentId),
+          isNull(commentsTable.deletedAt),
+        ),
+      );
+
+    const tombstoned = Number(replyCount) > 0;
+    if (tombstoned) {
+      await db
+        .update(commentsTable)
+        .set({ deletedAt: new Date(), body: "" })
+        .where(eq(commentsTable.id, commentId));
+    } else {
+      await db.delete(commentsTable).where(eq(commentsTable.id, commentId));
+    }
 
     // Audit any admin-triggered deletion (including self-authored), so the
     // moderation trail is complete. Author-only deletes of their own
@@ -178,6 +240,7 @@ router.delete(
           authorId: existing.authorId,
           selfAuthored: existing.authorId === profile.id,
           body: existing.body.slice(0, 500),
+          tombstoned,
         }),
       });
     }

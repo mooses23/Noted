@@ -1280,12 +1280,18 @@ components:
 
     Comment:
       type: object
-      required: [id, songId, authorId, body, createdAt, author]
+      required: [id, songId, authorId, body, createdAt, author, deleted, replyCount]
       properties:
         id: { type: string, format: uuid }
         songId: { type: string, format: uuid }
         authorId: { type: string, format: uuid }
+        parentCommentId:
+          type: string
+          format: uuid
+          nullable: true
         body: { type: string }
+        deleted: { type: boolean }
+        replyCount: { type: integer }
         createdAt: { type: string, format: date-time }
         author: { $ref: "#/components/schemas/ContributorLite" }
 
@@ -1334,6 +1340,10 @@ components:
       required: [body]
       properties:
         body: { type: string, minLength: 1, maxLength: 2000 }
+        parentCommentId:
+          type: string
+          format: uuid
+          nullable: true
 
     ReportCommentBody:
       type: object
