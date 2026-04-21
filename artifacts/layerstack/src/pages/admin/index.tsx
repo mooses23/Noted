@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { useGetAdminStats } from "@workspace/api-client-react";
-import { Disc3, Users, Activity, CheckCircle, Clock } from "lucide-react";
+import { Disc3, Users, Activity, CheckCircle, Clock, ShieldAlert } from "lucide-react";
 
 export default function AdminDashboard() {
   const { data: stats, isLoading } = useGetAdminStats();
@@ -87,6 +87,13 @@ export default function AdminDashboard() {
                     <p className="text-sm text-muted-foreground">Create new songs, open rounds, and publish versions.</p>
                   </div>
                   <Disc3 className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                </Link>
+                <Link href="/admin/comments" className="bg-card border border-border p-6 hover:border-primary/50 transition-colors flex items-center justify-between group">
+                  <div>
+                    <h3 className="font-bold font-serif text-lg mb-1">Moderate Reported Comments</h3>
+                    <p className="text-sm text-muted-foreground">Review comments flagged by the community and remove abuse.</p>
+                  </div>
+                  <ShieldAlert className="w-6 h-6 text-muted-foreground group-hover:text-primary transition-colors" />
                 </Link>
               </div>
             </section>

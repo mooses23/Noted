@@ -840,6 +840,19 @@ export const DeleteCommentParams = zod.object({
 });
 
 /**
+ * @summary Flag a comment for moderation (auth required, idempotent per user)
+ */
+export const ReportCommentParams = zod.object({
+  commentId: zod.coerce.string().uuid(),
+});
+
+export const reportCommentBodyReasonMax = 500;
+
+export const ReportCommentBody = zod.object({
+  reason: zod.string().min(1).max(reportCommentBodyReasonMax),
+});
+
+/**
  * @summary Request a presigned URL to upload a file directly to storage
  */
 export const RequestUploadUrlBody = zod.object({
@@ -868,6 +881,220 @@ export const RequestUploadUrlResponse = zod.object({
     })
     .optional(),
 });
+
+/**
+ * @summary List the current user's commit drafts (notes saved before a round was open)
+ */
+export const ListMyDraftsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  songId: zod.string().uuid(),
+  contributorId: zod.string().uuid(),
+  title: zod.string(),
+  note: zod.string().nullish(),
+  instrumentType: zod.string(),
+  audioFileUrl: zod.string(),
+  overlayOffsetSeconds: zod.number(),
+  displayNameOverride: zod.string().nullish(),
+  socialHandle: zod.string().nullish(),
+  confirmedHumanMade: zod.boolean(),
+  confirmedRightsGrant: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  song: zod.object({
+    id: zod.string().uuid(),
+    slug: zod.string(),
+    title: zod.string(),
+    description: zod.string().nullish(),
+    coverImageUrl: zod.string().nullish(),
+    creatorName: zod.string(),
+    genre: zod.string(),
+    bpm: zod.number(),
+    musicalKey: zod.string(),
+    timeSignature: zod.string().nullish(),
+    status: zod.enum(["draft", "active", "archived"]),
+    phase: zod.enum(["structure", "accents"]),
+    currentVersionId: zod.string().uuid().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date().optional(),
+  }),
+  eligibleRound: zod
+    .object({
+      id: zod.string().uuid(),
+      songId: zod.string().uuid(),
+      roundNumber: zod.number(),
+      title: zod.string(),
+      description: zod.string().nullish(),
+      allowedInstrumentType: zod.string(),
+      kind: zod.enum(["structure", "accent"]),
+      mergeBehavior: zod.enum(["single", "multi"]),
+      status: zod.enum(["draft", "open", "closed", "merged"]),
+      opensAt: zod.coerce.date().nullish(),
+      closesAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date().optional(),
+      commitCount: zod.number().nullish(),
+      totalVotes: zod.number().nullish(),
+    })
+    .nullish(),
+});
+export const ListMyDraftsResponse = zod.array(ListMyDraftsResponseItem);
+
+/**
+ * @summary Save a Note as a draft (no round required)
+ */
+export const createDraftBodyTitleMax = 120;
+
+export const createDraftBodyNoteMax = 500;
+
+export const createDraftBodyOverlayOffsetSecondsMin = 0;
+
+export const CreateDraftBody = zod.object({
+  songId: zod.string().uuid(),
+  title: zod.string().min(1).max(createDraftBodyTitleMax),
+  note: zod.string().max(createDraftBodyNoteMax).optional(),
+  instrumentType: zod.string(),
+  audioObjectPath: zod.string(),
+  overlayOffsetSeconds: zod
+    .number()
+    .min(createDraftBodyOverlayOffsetSecondsMin)
+    .optional(),
+  displayNameOverride: zod.string().optional(),
+  socialHandle: zod.string().optional(),
+  confirmedHumanMade: zod.boolean(),
+  confirmedRightsGrant: zod.boolean(),
+});
+
+export const CreateDraftResponse = zod.object({
+  id: zod.string().uuid(),
+  songId: zod.string().uuid(),
+  contributorId: zod.string().uuid(),
+  title: zod.string(),
+  note: zod.string().nullish(),
+  instrumentType: zod.string(),
+  audioFileUrl: zod.string(),
+  overlayOffsetSeconds: zod.number(),
+  displayNameOverride: zod.string().nullish(),
+  socialHandle: zod.string().nullish(),
+  confirmedHumanMade: zod.boolean(),
+  confirmedRightsGrant: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  song: zod.object({
+    id: zod.string().uuid(),
+    slug: zod.string(),
+    title: zod.string(),
+    description: zod.string().nullish(),
+    coverImageUrl: zod.string().nullish(),
+    creatorName: zod.string(),
+    genre: zod.string(),
+    bpm: zod.number(),
+    musicalKey: zod.string(),
+    timeSignature: zod.string().nullish(),
+    status: zod.enum(["draft", "active", "archived"]),
+    phase: zod.enum(["structure", "accents"]),
+    currentVersionId: zod.string().uuid().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date().optional(),
+  }),
+  eligibleRound: zod
+    .object({
+      id: zod.string().uuid(),
+      songId: zod.string().uuid(),
+      roundNumber: zod.number(),
+      title: zod.string(),
+      description: zod.string().nullish(),
+      allowedInstrumentType: zod.string(),
+      kind: zod.enum(["structure", "accent"]),
+      mergeBehavior: zod.enum(["single", "multi"]),
+      status: zod.enum(["draft", "open", "closed", "merged"]),
+      opensAt: zod.coerce.date().nullish(),
+      closesAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date().optional(),
+      commitCount: zod.number().nullish(),
+      totalVotes: zod.number().nullish(),
+    })
+    .nullish(),
+});
+
+export const DeleteDraftParams = zod.object({
+  draftId: zod.coerce.string().uuid(),
+});
+
+/**
+ * @summary Promote a draft into a real commit on an open round
+ */
+export const SubmitDraftParams = zod.object({
+  draftId: zod.coerce.string().uuid(),
+});
+
+export const SubmitDraftBody = zod.object({
+  roundId: zod.string().uuid().optional(),
+});
+
+export const SubmitDraftResponse = zod
+  .object({
+    id: zod.string().uuid(),
+    songId: zod.string().uuid(),
+    roundId: zod.string().uuid(),
+    contributorId: zod.string().uuid(),
+    title: zod.string(),
+    note: zod.string().nullish(),
+    instrumentType: zod.string(),
+    kind: zod.enum(["structure", "accent"]),
+    audioFileUrl: zod.string(),
+    previewMixUrl: zod.string().nullish(),
+    overlayOffsetSeconds: zod.number(),
+    baseAudioUrl: zod.string().nullish(),
+    status: zod.enum(["pending", "shortlisted", "merged", "rejected"]),
+    voteCount: zod.number(),
+    hasVoted: zod.boolean().optional(),
+    createdAt: zod.coerce.date(),
+    contributor: zod.object({
+      id: zod.string().uuid(),
+      displayName: zod.string(),
+      username: zod.string().nullish(),
+      avatarUrl: zod.string().nullish(),
+      socialHandle: zod.string().nullish(),
+    }),
+    roundNumber: zod.number(),
+    songTitle: zod.string(),
+    songSlug: zod.string(),
+    songGenre: zod.string().nullish(),
+  })
+  .and(
+    zod.object({
+      round: zod.object({
+        id: zod.string().uuid(),
+        songId: zod.string().uuid(),
+        roundNumber: zod.number(),
+        title: zod.string(),
+        description: zod.string().nullish(),
+        allowedInstrumentType: zod.string(),
+        kind: zod.enum(["structure", "accent"]),
+        mergeBehavior: zod.enum(["single", "multi"]),
+        status: zod.enum(["draft", "open", "closed", "merged"]),
+        opensAt: zod.coerce.date().nullish(),
+        closesAt: zod.coerce.date().nullish(),
+        createdAt: zod.coerce.date(),
+        updatedAt: zod.coerce.date().optional(),
+        commitCount: zod.number().nullish(),
+        totalVotes: zod.number().nullish(),
+      }),
+      mergedIntoVersion: zod
+        .object({
+          id: zod.string().uuid(),
+          songId: zod.string().uuid(),
+          versionNumber: zod.number(),
+          title: zod.string(),
+          description: zod.string().nullish(),
+          officialMixUrl: zod.string(),
+          isCurrent: zod.boolean(),
+          createdAt: zod.coerce.date(),
+        })
+        .nullish(),
+    }),
+  );
 
 /**
  * @summary Cast an upvote on a commit (idempotent)
@@ -1419,3 +1646,35 @@ export const AdminPreviewVersionMixResponse = zod.object({
   objectPath: zod.string(),
   sizeBytes: zod.number(),
 });
+
+/**
+ * @summary List comments with at least one user-submitted report
+ */
+
+export const AdminListCommentReportsResponseItem = zod.object({
+  comment: zod.object({
+    id: zod.string().uuid(),
+    songId: zod.string().uuid(),
+    authorId: zod.string().uuid(),
+    body: zod.string(),
+    createdAt: zod.coerce.date(),
+    author: zod.object({
+      id: zod.string().uuid(),
+      displayName: zod.string(),
+      username: zod.string().nullish(),
+      avatarUrl: zod.string().nullish(),
+      socialHandle: zod.string().nullish(),
+    }),
+  }),
+  reports: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      reason: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  reportCount: zod.number().min(1),
+});
+export const AdminListCommentReportsResponse = zod.array(
+  AdminListCommentReportsResponseItem,
+);

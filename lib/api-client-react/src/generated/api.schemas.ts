@@ -434,6 +434,69 @@ export interface PostCommentBody {
   body: string;
 }
 
+export interface ReportCommentBody {
+  /**
+   * @minLength 1
+   * @maxLength 500
+   */
+  reason: string;
+}
+
+export interface CommentReportSummary {
+  id: string;
+  reason: string;
+  createdAt: string;
+}
+
+export interface ReportedComment {
+  comment: Comment;
+  reports: CommentReportSummary[];
+  /** @minimum 1 */
+  reportCount: number;
+}
+
+export interface CommitDraft {
+  id: string;
+  songId: string;
+  contributorId: string;
+  title: string;
+  note?: string | null;
+  instrumentType: string;
+  audioFileUrl: string;
+  overlayOffsetSeconds: number;
+  displayNameOverride?: string | null;
+  socialHandle?: string | null;
+  confirmedHumanMade: boolean;
+  confirmedRightsGrant: boolean;
+  createdAt: string;
+  updatedAt: string;
+  song: Song;
+  eligibleRound?: Round | null;
+}
+
+export interface CreateDraftBody {
+  songId: string;
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  title: string;
+  /** @maxLength 500 */
+  note?: string;
+  instrumentType: string;
+  audioObjectPath: string;
+  /** @minimum 0 */
+  overlayOffsetSeconds?: number;
+  displayNameOverride?: string;
+  socialHandle?: string;
+  confirmedHumanMade: boolean;
+  confirmedRightsGrant: boolean;
+}
+
+export interface SubmitDraftBody {
+  roundId?: string;
+}
+
 export type AdminAddSongFileBodyFileType =
   (typeof AdminAddSongFileBodyFileType)[keyof typeof AdminAddSongFileBodyFileType];
 
@@ -644,6 +707,10 @@ export const ListCommitsSort = {
 export type ListRisingCommitsParams = {
   limit?: number;
   genre?: string;
+};
+
+export type ReportComment201 = {
+  ok: boolean;
 };
 
 export type LogDownloadBody = {

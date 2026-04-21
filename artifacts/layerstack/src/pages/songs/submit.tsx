@@ -6,9 +6,12 @@ import * as z from "zod";
 import {
   useGetSongBySlug,
   useSubmitCommit,
+  useCreateDraft,
   useGetCurrentUser,
+  getListMyDraftsQueryKey,
 } from "@workspace/api-client-react";
 import { getGetSongBySlugQueryKey } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useUpload } from "@workspace/object-storage-web";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,6 +66,7 @@ function parseMmSsCs(input: string): number | null {
 const formSchema = z.object({
   title: z.string().min(1, "Title is required").max(120),
   note: z.string().max(500).optional(),
+  draftInstrumentType: z.string().optional(),
   confirmedHumanMade: z
     .boolean()
     .refine((v) => v === true, "You must confirm this is human-made"),
@@ -106,12 +110,15 @@ export default function SubmitCommit() {
   });
 
   const submitMutation = useSubmitCommit();
+  const draftMutation = useCreateDraft();
+  const queryClient = useQueryClient();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
       note: "",
+      draftInstrumentType: "",
       confirmedHumanMade: false,
       confirmedRightsGrant: false,
       displayNameOverride: "",
@@ -120,21 +127,16 @@ export default function SubmitCommit() {
   });
 
   useEffect(() => {
-    if (
-      audioFile &&
-      !objectPath &&
-      !isUploading &&
-      song &&
-      song.currentRound
-    ) {
+    if (audioFile && !objectPath && !isUploading && song) {
       uploadFile(audioFile, {
         purpose: "commit-audio",
         songId: song.id,
-        roundId: song.currentRound.id,
+        // When no round is open we still upload, but as a draft.
+        ...(song.currentRound ? { roundId: song.currentRound.id } : {}),
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioFile, objectPath, isUploading, song?.currentRound?.id]);
+  }, [audioFile, objectPath, isUploading, song?.id, song?.currentRound?.id]);
 
   const baseLayer = useMemo<WaveformLayer | null>(() => {
     if (!song?.currentVersion?.officialMixUrl) return null;
@@ -204,15 +206,54 @@ export default function SubmitCommit() {
       return;
     }
     if (!song.currentRound) {
-      toast({
-        title: "No open round",
-        description:
-          "There's no open round on this song right now. Come back when curators open the next round.",
-        variant: "destructive",
-      });
+      const instrumentType = (values.draftInstrumentType ?? "").trim();
+      if (!instrumentType) {
+        toast({
+          title: "Pick an instrument",
+          description:
+            "Tell curators what kind of layer this is so it lands in the right round.",
+          variant: "destructive",
+        });
+        return;
+      }
+      // Save the Note as a draft tied to this song. Once a matching round
+      // opens the user can promote it from their profile.
+      const { draftInstrumentType: _ignored, ...rest } = values;
+      void _ignored;
+      draftMutation.mutate(
+        {
+          data: {
+            songId: song.id,
+            instrumentType,
+            audioObjectPath: objectPath,
+            overlayOffsetSeconds: overlayOffset,
+            ...rest,
+          },
+        },
+        {
+          onSuccess: () => {
+            toast({
+              title: "Note saved as draft",
+              description:
+                "We'll hold it until a matching round opens. You can submit it from your profile.",
+            });
+            queryClient.invalidateQueries({ queryKey: getListMyDraftsQueryKey() });
+            setLocation(`/profile`);
+          },
+          onError: (err) => {
+            toast({
+              title: "Couldn't save draft",
+              description: err.message,
+              variant: "destructive",
+            });
+          },
+        },
+      );
       return;
     }
 
+    const { draftInstrumentType: _ignored2, ...rest } = values;
+    void _ignored2;
     submitMutation.mutate(
       {
         data: {
@@ -220,7 +261,7 @@ export default function SubmitCommit() {
           instrumentType: song.currentRound.allowedInstrumentType,
           audioObjectPath: objectPath,
           overlayOffsetSeconds: overlayOffset,
-          ...values,
+          ...rest,
         },
       },
       {
@@ -431,6 +472,31 @@ export default function SubmitCommit() {
                   )}
                 />
 
+                {noActiveRound && (
+                  <FormField
+                    control={form.control}
+                    name="draftInstrumentType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="uppercase tracking-widest text-xs text-muted-foreground">
+                          Instrument / layer type
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="e.g. bass, vocals, drums, hi-hat"
+                            className="h-12 rounded-none bg-background border-border focus-visible:ring-primary"
+                            {...field}
+                          />
+                        </FormControl>
+                        <p className="text-[11px] text-muted-foreground">
+                          We'll use this to match your draft to the next open round.
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
                 {!isAccent && (
                   <FormField
                     control={form.control}
@@ -515,18 +581,30 @@ export default function SubmitCommit() {
               <Button
                 type="submit"
                 className="w-full h-14 rounded-none text-base uppercase tracking-widest font-bold"
-                disabled={!objectPath || submitMutation.isPending || noActiveRound}
-                title={noActiveRound ? "No open round on this song right now." : ""}
+                disabled={
+                  !objectPath ||
+                  submitMutation.isPending ||
+                  draftMutation.isPending
+                }
               >
-                {submitMutation.isPending
+                {noActiveRound
+                  ? draftMutation.isPending
+                    ? "Saving draft…"
+                    : "Save as draft"
+                  : submitMutation.isPending
                   ? "Dropping…"
-                  : noActiveRound
-                  ? "No open round"
                   : "Drop this Note"}
-                {!submitMutation.isPending && !noActiveRound && (
+                {!submitMutation.isPending && !draftMutation.isPending && (
                   <ArrowRight className="w-5 h-5 ml-2" />
                 )}
               </Button>
+              {noActiveRound && (
+                <p className="text-xs text-muted-foreground text-center">
+                  No round is open right now — your Note is held as a draft and
+                  shows up on your profile so you can submit it the moment
+                  curators reopen the song.
+                </p>
+              )}
             </form>
           </Form>
         </Section>

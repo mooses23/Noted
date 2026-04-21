@@ -276,6 +276,40 @@ export const commentsTable = pgTable(
   ],
 );
 
+export const commitDraftsTable = pgTable(
+  "commit_drafts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    songId: uuid("song_id")
+      .notNull()
+      .references(() => songsTable.id, { onDelete: "cascade" }),
+    contributorId: uuid("contributor_id")
+      .notNull()
+      .references(() => profilesTable.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    note: text("note"),
+    instrumentType: text("instrument_type").notNull(),
+    audioFileUrl: text("audio_file_url").notNull(),
+    overlayOffsetSeconds: real("overlay_offset_seconds").notNull().default(0),
+    displayNameOverride: text("display_name_override"),
+    socialHandle: text("social_handle"),
+    confirmedHumanMade: boolean("confirmed_human_made").notNull().default(false),
+    confirmedRightsGrant: boolean("confirmed_rights_grant")
+      .notNull()
+      .default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("commit_drafts_song_idx").on(t.songId),
+    index("commit_drafts_contributor_idx").on(t.contributorId),
+  ],
+);
+
 export const songCreditsTable = pgTable(
   "song_credits",
   {
@@ -317,6 +351,30 @@ export const downloadsLogTable = pgTable(
   (t) => [
     index("downloads_song_idx").on(t.songId),
     index("downloads_file_idx").on(t.fileId),
+  ],
+);
+
+export const commentReportsTable = pgTable(
+  "comment_reports",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    commentId: uuid("comment_id")
+      .notNull()
+      .references(() => commentsTable.id, { onDelete: "cascade" }),
+    reporterId: uuid("reporter_id").references(() => profilesTable.id, {
+      onDelete: "set null",
+    }),
+    reason: text("reason").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("comment_reports_comment_reporter_uq").on(
+      t.commentId,
+      t.reporterId,
+    ),
+    index("comment_reports_comment_idx").on(t.commentId),
   ],
 );
 
@@ -436,3 +494,7 @@ export type SongCredit = typeof songCreditsTable.$inferSelect;
 export type InsertSongCredit = typeof songCreditsTable.$inferInsert;
 export type Comment = typeof commentsTable.$inferSelect;
 export type InsertComment = typeof commentsTable.$inferInsert;
+export type CommitDraft = typeof commitDraftsTable.$inferSelect;
+export type InsertCommitDraft = typeof commitDraftsTable.$inferInsert;
+export type CommentReport = typeof commentReportsTable.$inferSelect;
+export type InsertCommentReport = typeof commentReportsTable.$inferInsert;

@@ -26,6 +26,7 @@ import Profile from "./pages/profile";
 import AdminDashboard from "./pages/admin";
 import AdminSongs from "./pages/admin/songs";
 import AdminSongDetail from "./pages/admin/songs/song";
+import AdminCommentsModeration from "./pages/admin/comments";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -346,6 +347,9 @@ function ClerkProviderWithRoutes() {
             </Route>
             <Route path="/admin/songs/:songId">
               {(params) => <AdminRoute component={AdminSongDetail} params={params} />}
+            </Route>
+            <Route path="/admin/comments">
+              {(params) => <AdminRoute component={AdminCommentsModeration} params={params} />}
             </Route>
             
             <Route component={NotFound} />

@@ -341,6 +341,32 @@ paths:
         "204":
           description: Deleted
 
+  /comments/{commentId}/reports:
+    post:
+      operationId: reportComment
+      tags: [comments]
+      summary: Flag a comment for moderation (auth required, idempotent per user)
+      parameters:
+        - name: commentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReportCommentBody" }
+      responses:
+        "201":
+          description: Reported
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+
   /storage/uploads/request-url:
     post:
       operationId: requestUploadUrl
@@ -357,6 +383,70 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/RequestUploadUrlResponse" }
+
+  /commits/drafts:
+    get:
+      operationId: listMyDrafts
+      tags: [commits]
+      summary: List the current user's commit drafts (notes saved before a round was open)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/CommitDraft" }
+    post:
+      operationId: createDraft
+      tags: [commits]
+      summary: Save a Note as a draft (no round required)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateDraftBody" }
+      responses:
+        "200":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommitDraft" }
+
+  /commits/drafts/{draftId}:
+    delete:
+      operationId: deleteDraft
+      tags: [commits]
+      parameters:
+        - in: path
+          name: draftId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Deleted
+
+  /commits/drafts/{draftId}/submit:
+    post:
+      operationId: submitDraft
+      tags: [commits]
+      summary: Promote a draft into a real commit on an open round
+      parameters:
+        - in: path
+          name: draftId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SubmitDraftBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommitDetail" }
 
   /commits/{commitId}/vote:
     post:
@@ -705,6 +795,20 @@ paths:
           description: Invalid request
         "502":
           description: Mixing failed; manual upload is still available
+
+  /admin/comments/reports:
+    get:
+      operationId: adminListCommentReports
+      tags: [admin]
+      summary: List comments with at least one user-submitted report
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ReportedComment" }
 
 components:
   parameters:
@@ -1155,6 +1259,84 @@ components:
       required: [body]
       properties:
         body: { type: string, minLength: 1, maxLength: 2000 }
+
+    ReportCommentBody:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 500 }
+
+    CommentReportSummary:
+      type: object
+      required: [id, reason, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        reason: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    ReportedComment:
+      type: object
+      required: [comment, reports, reportCount]
+      properties:
+        comment: { $ref: "#/components/schemas/Comment" }
+        reports:
+          type: array
+          items: { $ref: "#/components/schemas/CommentReportSummary" }
+        reportCount: { type: integer, minimum: 1 }
+
+    CommitDraft:
+      type: object
+      required:
+        [id, songId, contributorId, title, instrumentType, audioFileUrl, overlayOffsetSeconds, confirmedHumanMade, confirmedRightsGrant, createdAt, updatedAt, song]
+      properties:
+        id: { type: string, format: uuid }
+        songId: { type: string, format: uuid }
+        contributorId: { type: string, format: uuid }
+        title: { type: string }
+        note:
+          type: string
+          nullable: true
+        instrumentType: { type: string }
+        audioFileUrl: { type: string }
+        overlayOffsetSeconds: { type: number, format: float }
+        displayNameOverride:
+          type: string
+          nullable: true
+        socialHandle:
+          type: string
+          nullable: true
+        confirmedHumanMade: { type: boolean }
+        confirmedRightsGrant: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        song: { $ref: "#/components/schemas/Song" }
+        eligibleRound:
+          nullable: true
+          oneOf: [{ $ref: "#/components/schemas/Round" }]
+
+    CreateDraftBody:
+      type: object
+      required:
+        [songId, title, instrumentType, audioObjectPath, confirmedHumanMade, confirmedRightsGrant]
+      properties:
+        songId: { type: string, format: uuid }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        note: { type: string, maxLength: 500 }
+        instrumentType: { type: string }
+        audioObjectPath: { type: string }
+        overlayOffsetSeconds:
+          type: number
+          format: float
+          minimum: 0
+        displayNameOverride: { type: string }
+        socialHandle: { type: string }
+        confirmedHumanMade: { type: boolean }
+        confirmedRightsGrant: { type: boolean }
+
+    SubmitDraftBody:
+      type: object
+      properties:
+        roundId: { type: string, format: uuid }
 
     AdminAddSongFileBody:
       type: object
