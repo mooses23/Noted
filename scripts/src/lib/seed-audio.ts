@@ -47,7 +47,7 @@ export type SeedAudioAsset = DemoSongCredit & {
 /**
  * Per-asset upload metadata (download URL + expected size). Credits/titles
  * for each key are stored alongside in @workspace/seed-content so the
- * LayerStack frontend can render the same attribution to end users.
+ * Noted frontend can render the same attribution to end users.
  */
 const SEED_AUDIO_UPLOAD_META: Record<
   string,
@@ -160,7 +160,7 @@ async function uploadIfMissing(asset: SeedAudioAsset): Promise<void> {
     headers: {
       // Wikimedia asks that bots/clients identify themselves.
       "User-Agent":
-        "LayerStack-Seed/1.0 (+https://layerstack.example) Node fetch",
+        "Noted-Seed/1.0 (+https://layerstack.example) Node fetch",
     },
   });
   if (!res.ok) {

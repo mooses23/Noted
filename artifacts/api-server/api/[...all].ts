@@ -1,4 +1,4 @@
-// Vercel serverless catch-all entry for the LayerStack API.
+// Vercel serverless catch-all entry for the Noted API.
 //
 // Filesystem routing:
 //   * Vercel automatically routes any request matching `/api/*` to this

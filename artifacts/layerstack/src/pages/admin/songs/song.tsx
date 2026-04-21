@@ -7,6 +7,7 @@ import {
   useAdminUpdateSong,
   useAdminCreateRound,
   useAdminUpdateRound,
+  useAdminAdvanceSongPhase,
   useAdminAddSongFile,
   useAdminSetCommitStatus,
   useAdminListCommits,
@@ -25,6 +26,9 @@ import {
   UpdateSongBodyStatus,
   UpdateRoundBodyStatus,
   AdminListCommitsStatus,
+  AdvancePhaseBodyPhase,
+  CreateRoundBodyKind,
+  CreateRoundBodyMergeBehavior,
 } from "@workspace/api-client-react";
 import type {
   CommitSummary,
@@ -508,6 +512,13 @@ function RoundsPanel({ songId, rounds }: { songId: string; rounds: Round[] }) {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [instrument, setInstrument] = useState(INSTRUMENT_OPTIONS[0]);
+  const [kind, setKind] = useState<CreateRoundBodyKind>(
+    CreateRoundBodyKind.structure,
+  );
+  const [mergeBehavior, setMergeBehavior] =
+    useState<CreateRoundBodyMergeBehavior>(
+      CreateRoundBodyMergeBehavior.single,
+    );
   const create = useAdminCreateRound();
   const update = useAdminUpdateRound();
 
@@ -515,6 +526,15 @@ function RoundsPanel({ songId, rounds }: { songId: string; rounds: Round[] }) {
     queryClient.invalidateQueries({
       queryKey: getListRoundsForSongQueryKey(songId),
     });
+
+  const onKindChange = (k: CreateRoundBodyKind) => {
+    setKind(k);
+    setMergeBehavior(
+      k === CreateRoundBodyKind.accent
+        ? CreateRoundBodyMergeBehavior.multi
+        : CreateRoundBodyMergeBehavior.single,
+    );
+  };
 
   const submit = () => {
     if (!title) {
@@ -527,6 +547,8 @@ function RoundsPanel({ songId, rounds }: { songId: string; rounds: Round[] }) {
           songId,
           title,
           allowedInstrumentType: instrument,
+          kind,
+          mergeBehavior,
           status: "open",
         },
       },
@@ -556,29 +578,61 @@ function RoundsPanel({ songId, rounds }: { songId: string; rounds: Round[] }) {
     <div className="bg-card border border-border p-8 space-y-6">
       <div>
         <h2 className="text-2xl font-serif font-bold mb-4">Create Round</h2>
-        <div className="grid md:grid-cols-3 gap-3">
+        <div className="grid md:grid-cols-2 gap-3">
           <Input
             placeholder="Round title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="rounded-none"
+            className="rounded-none md:col-span-2"
           />
-          <Select value={instrument} onValueChange={setInstrument}>
-            <SelectTrigger className="rounded-none">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {INSTRUMENT_OPTIONS.map((o) => (
-                <SelectItem key={o} value={o}>
-                  {o}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div>
+            <Label className="text-xs uppercase tracking-widest text-muted-foreground">Instrument</Label>
+            <Select value={instrument} onValueChange={setInstrument}>
+              <SelectTrigger className="rounded-none">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {INSTRUMENT_OPTIONS.map((o) => (
+                  <SelectItem key={o} value={o}>
+                    {o}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs uppercase tracking-widest text-muted-foreground">Round kind</Label>
+            <Select value={kind} onValueChange={(v) => onKindChange(v as CreateRoundBodyKind)}>
+              <SelectTrigger className="rounded-none">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={CreateRoundBodyKind.structure}>structure (foundation layer)</SelectItem>
+                <SelectItem value={CreateRoundBodyKind.accent}>accent (signature moment)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs uppercase tracking-widest text-muted-foreground">Merge behavior</Label>
+            <Select
+              value={mergeBehavior}
+              onValueChange={(v) =>
+                setMergeBehavior(v as CreateRoundBodyMergeBehavior)
+              }
+            >
+              <SelectTrigger className="rounded-none">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={CreateRoundBodyMergeBehavior.single}>single (pick one)</SelectItem>
+                <SelectItem value={CreateRoundBodyMergeBehavior.multi}>multi (stack many)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <Button
             onClick={submit}
             disabled={create.isPending}
-            className="rounded-none uppercase tracking-widest text-xs"
+            className="rounded-none uppercase tracking-widest text-xs md:col-span-2"
           >
             <Plus className="w-4 h-4 mr-2" /> Add Round
           </Button>
@@ -599,7 +653,9 @@ function RoundsPanel({ songId, rounds }: { songId: string; rounds: Round[] }) {
                     Round {round.roundNumber}: {round.title}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    Wanted: {round.allowedInstrumentType} • Status:{" "}
+                    {round.kind === "accent" ? "Accent" : "Structure"} •{" "}
+                    {round.mergeBehavior === "multi" ? "stackable" : "pick one"}{" "}
+                    • Wanted: {round.allowedInstrumentType} • Status:{" "}
                     <span className="uppercase">{round.status}</span>
                   </div>
                 </div>
@@ -810,10 +866,12 @@ function SettingsPanel({
     musicalKey?: string | null;
     timeSignature?: string | null;
     status: string;
+    phase: string;
   };
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const advance = useAdminAdvanceSongPhase();
   const [title, setTitle] = useState(song.title);
   const [description, setDescription] = useState(song.description ?? "");
   const [creatorName, setCreatorName] = useState(song.creatorName);
@@ -848,8 +906,63 @@ function SettingsPanel({
     );
   };
 
+  const advancePhase = (next: AdvancePhaseBodyPhase) => {
+    if (
+      !confirm(
+        next === AdvancePhaseBodyPhase.accents
+          ? "Move this song into the Accents phase? Structure rounds will be considered locked."
+          : "Move this song back to the Structure phase?",
+      )
+    )
+      return;
+    advance.mutate(
+      { songId: song.id, data: { phase: next } },
+      {
+        onSuccess: () => {
+          toast({ title: `Phase set to ${next}` });
+          queryClient.invalidateQueries({ queryKey: getGetSongQueryKey(song.id) });
+        },
+        onError: (err) =>
+          toast({ title: "Failed", description: String(err), variant: "destructive" }),
+      },
+    );
+  };
+
   return (
-    <div className="bg-card border border-border p-8 space-y-4">
+    <div className="bg-card border border-border p-8 space-y-6">
+      <div className="border border-primary/40 bg-primary/5 p-4">
+        <div className="text-xs uppercase tracking-widest text-primary mb-1">Lifecycle Phase</div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="font-serif font-bold text-lg">
+              Currently: {song.phase === "accents" ? "Accents" : "Structure"}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {song.phase === "accents"
+                ? "The foundation is set. New rounds should add signature accent moments."
+                : "The community is shaping drums, bass, and harmony. Lock the structure to advance."}
+            </p>
+          </div>
+          {song.phase === "structure" ? (
+            <Button
+              onClick={() => advancePhase(AdvancePhaseBodyPhase.accents)}
+              disabled={advance.isPending}
+              className="rounded-none uppercase tracking-widest text-xs"
+            >
+              Advance to Accents
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              onClick={() => advancePhase(AdvancePhaseBodyPhase.structure)}
+              disabled={advance.isPending}
+              className="rounded-none uppercase tracking-widest text-xs"
+            >
+              Revert to Structure
+            </Button>
+          )}
+        </div>
+      </div>
       <h2 className="text-2xl font-serif font-bold mb-2">Song Settings</h2>
       <div className="grid md:grid-cols-2 gap-4">
         <div>

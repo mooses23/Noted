@@ -141,8 +141,8 @@ function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-[100dvh] flex flex-col bg-background text-foreground font-sans">
       <header className="border-b border-border py-4 px-6 md:px-12 flex items-center justify-between z-10 sticky top-0 bg-background/90 backdrop-blur-sm">
         <Link href="/" className="flex items-center gap-3">
-          <img src="/logo.svg" alt="LayerStack Logo" className="w-6 h-6" />
-          <span className="font-serif font-bold text-xl tracking-tighter">LayerStack</span>
+          <img src="/logo.svg" alt="Noted Logo" className="w-6 h-6" />
+          <span className="font-serif font-bold text-xl tracking-tighter">Noted</span>
         </Link>
         <nav className="hidden md:flex items-center gap-8 text-sm uppercase tracking-widest text-muted-foreground font-medium">
           <Link href="/songs" className="hover:text-foreground transition-colors">Songs</Link>
@@ -176,8 +176,8 @@ function Layout({ children }: { children: React.ReactNode }) {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-2">
             <div className="flex items-center gap-3 mb-4">
-              <img src="/logo.svg" alt="LayerStack Logo" className="w-5 h-5 opacity-50 grayscale" />
-              <span className="font-serif text-lg tracking-tighter text-muted-foreground">LayerStack</span>
+              <img src="/logo.svg" alt="Noted Logo" className="w-5 h-5 opacity-50 grayscale" />
+              <span className="font-serif text-lg tracking-tighter text-muted-foreground">Noted</span>
             </div>
             <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
               The collaborative, human-made music platform. We build songs together, one instrument layer at a time. No AI allowed.

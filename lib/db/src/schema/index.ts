@@ -17,6 +17,21 @@ export const songStatusEnum = pgEnum("song_status", [
   "archived",
 ]);
 
+export const songPhaseEnum = pgEnum("song_phase", [
+  "structure",
+  "accents",
+]);
+
+export const roundKindEnum = pgEnum("round_kind", [
+  "structure",
+  "accent",
+]);
+
+export const mergeBehaviorEnum = pgEnum("merge_behavior", [
+  "single",
+  "multi",
+]);
+
 export const roundStatusEnum = pgEnum("round_status", [
   "draft",
   "open",
@@ -71,6 +86,7 @@ export const songsTable = pgTable(
     musicalKey: text("musical_key").notNull(),
     timeSignature: text("time_signature"),
     status: songStatusEnum("status").notNull().default("active"),
+    phase: songPhaseEnum("phase").notNull().default("structure"),
     currentVersionId: uuid("current_version_id"),
     featured: boolean("featured").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -113,6 +129,8 @@ export const roundsTable = pgTable(
     title: text("title").notNull(),
     description: text("description"),
     allowedInstrumentType: text("allowed_instrument_type").notNull(),
+    kind: roundKindEnum("kind").notNull().default("structure"),
+    mergeBehavior: mergeBehaviorEnum("merge_behavior").notNull().default("single"),
     status: roundStatusEnum("status").notNull().default("draft"),
     baseVersionId: uuid("base_version_id"),
     opensAt: timestamp("opens_at", { withTimezone: true }),
@@ -146,6 +164,7 @@ export const commitsTable = pgTable(
     title: text("title").notNull(),
     note: text("note"),
     instrumentType: text("instrument_type").notNull(),
+    kind: roundKindEnum("kind").notNull().default("structure"),
     audioFileUrl: text("audio_file_url").notNull(),
     previewMixUrl: text("preview_mix_url"),
     status: commitStatusEnum("status").notNull().default("pending"),

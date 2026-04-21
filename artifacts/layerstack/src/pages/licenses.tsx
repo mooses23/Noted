@@ -64,7 +64,7 @@ export default function Licenses() {
           Third-Party Licenses
         </h1>
         <p className="text-lg text-muted-foreground">
-          LayerStack stands on the shoulders of generous creators. Every third-party
+          Noted stands on the shoulders of generous creators. Every third-party
           asset bundled with the site — including audio used in each song — is
           listed below, along with its author, source, and license.
         </p>

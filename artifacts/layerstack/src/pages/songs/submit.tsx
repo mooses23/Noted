@@ -132,11 +132,16 @@ export default function SubmitCommit() {
           ← Back to {song.title}
         </Link>
         <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-tighter mb-2">
-          Submit Layer
+          {song.currentRound.kind === "accent" ? "Submit Accent" : "Submit Layer"}
         </h1>
-        <div className="text-lg text-primary mb-6">
+        <div className="text-lg text-primary mb-2">
           Round {song.currentRound.roundNumber}: {song.currentRound.allowedInstrumentType}
         </div>
+        <p className="text-sm text-muted-foreground mb-6">
+          {song.currentRound.kind === "accent"
+            ? "Accent rounds are about signature sonic moments — a clap, a one-shot, a punctuation that becomes the song's fingerprint."
+            : "Structure rounds shape the foundation of the song — drums, bass, harmony, melody."}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-12">

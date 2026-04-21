@@ -88,6 +88,13 @@ async function buildSongDetail(song: typeof songsTable.$inferSelect) {
 
   const stems = files.filter((f) => f.fileType === "stem");
 
+  const structureRoundsCompleted = rounds.filter(
+    (r) => r.kind === "structure" && r.status === "merged",
+  ).length;
+  const accentRoundsCompleted = rounds.filter(
+    (r) => r.kind === "accent" && r.status === "merged",
+  ).length;
+
   return {
     ...toSong(song),
     currentRound: currentRound ? toRound(currentRound) : null,
@@ -97,6 +104,8 @@ async function buildSongDetail(song: typeof songsTable.$inferSelect) {
     totalCommits: commitStats[0]?.count ?? 0,
     totalVotes: voteStats[0]?.count ?? 0,
     versionCount: versions.length,
+    structureRoundsCompleted,
+    accentRoundsCompleted,
   };
 }
 

@@ -7,7 +7,7 @@ export default function Rights() {
       <div className="prose prose-invert prose-lg max-w-none">
         <h2 className="font-serif text-3xl mt-12 mb-6">Ownership</h2>
         <p>
-          You keep ownership of your original performance and recording. When you submit a commit, you grant LayerStack and the song's seed artist a perpetual, worldwide, royalty-free license to use your layer as part of the collaborative song, including in all current and future official mixes.
+          You keep ownership of your original performance and recording. When you submit a commit, you grant Noted and the song's seed artist a perpetual, worldwide, royalty-free license to use your layer as part of the collaborative song, including in all current and future official mixes.
         </p>
         <h2 className="font-serif text-3xl mt-12 mb-6">Credit</h2>
         <p>

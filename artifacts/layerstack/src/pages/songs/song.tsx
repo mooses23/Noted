@@ -39,8 +39,22 @@ export default function SongDetail() {
           />
           
           <div className="flex-1 min-w-0 flex flex-col justify-center">
-            <div className="text-xs uppercase tracking-widest text-primary mb-3">
-              {song.genre} • {song.bpm} BPM • {song.musicalKey} • {song.timeSignature || "4/4"}
+            <div className="text-xs uppercase tracking-widest text-primary mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span>{song.genre} • {song.bpm} BPM • {song.musicalKey} • {song.timeSignature || "4/4"}</span>
+              <span
+                className={`px-2 py-0.5 border text-[0.65rem] ${
+                  song.phase === "accents"
+                    ? "border-primary/60 text-primary bg-primary/5"
+                    : "border-foreground/40 text-foreground/80 bg-foreground/5"
+                }`}
+                title={
+                  song.phase === "accents"
+                    ? "The structure is locked. The community is now layering signature accents."
+                    : "The community is shaping the foundation: drums, bass, and harmony."
+                }
+              >
+                Phase: {song.phase === "accents" ? "Accents" : "Structure"}
+              </span>
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold tracking-tighter mb-4 truncate">
               {song.title}
@@ -58,7 +72,7 @@ export default function SongDetail() {
                 <AudioPlayer 
                   url={song.currentVersion.officialMixUrl}
                   title={`${song.title} - v${song.currentVersion.versionNumber}`}
-                  artist="LayerStack Community"
+                  artist="Noted Community"
                   className="bg-background border border-border"
                 />
               </div>
@@ -74,13 +88,34 @@ export default function SongDetail() {
             <section>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-3xl font-serif font-bold">Current Round</h2>
-                <div className="px-3 py-1 bg-primary/10 text-primary border border-primary/30 text-xs uppercase tracking-widest">
-                  Open
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`px-3 py-1 border text-xs uppercase tracking-widest ${
+                      song.currentRound.kind === "accent"
+                        ? "bg-primary/10 text-primary border-primary/30"
+                        : "bg-foreground/5 text-foreground border-foreground/30"
+                    }`}
+                  >
+                    {song.currentRound.kind === "accent" ? "Accent round" : "Structure round"}
+                  </div>
+                  <div className="px-3 py-1 bg-primary/10 text-primary border border-primary/30 text-xs uppercase tracking-widest">
+                    Open
+                  </div>
                 </div>
               </div>
               <div className="bg-card border border-border p-6 md:p-8">
                 <h3 className="font-serif text-2xl font-bold mb-2">Round {song.currentRound.roundNumber}: {song.currentRound.title}</h3>
-                <p className="text-muted-foreground mb-6">{song.currentRound.description || `We are looking for a ${song.currentRound.allowedInstrumentType} layer.`}</p>
+                <p className="text-muted-foreground mb-2">
+                  {song.currentRound.description ||
+                    (song.currentRound.kind === "accent"
+                      ? `Add a ${song.currentRound.allowedInstrumentType} accent — a small signature moment that cuts through.`
+                      : `We are looking for a ${song.currentRound.allowedInstrumentType} layer to anchor the song.`)}
+                </p>
+                <p className="text-xs text-muted-foreground mb-6">
+                  {song.currentRound.mergeBehavior === "multi"
+                    ? "Multiple submissions can be selected and stacked into the next official mix."
+                    : "Curators will pick one submission to merge into the next official mix."}
+                </p>
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-6 border-t border-border">
                   <div className="flex-1">
                     <div className="text-sm font-bold uppercase tracking-widest text-primary mb-1">
@@ -94,7 +129,9 @@ export default function SongDetail() {
                     )}
                   </div>
                   <Link href={`/songs/${song.slug}/submit`}>
-                    <Button className="rounded-none uppercase tracking-widest text-xs px-8 h-12 w-full sm:w-auto">Submit Layer</Button>
+                    <Button className="rounded-none uppercase tracking-widest text-xs px-8 h-12 w-full sm:w-auto">
+                      {song.currentRound.kind === "accent" ? "Submit Accent" : "Submit Layer"}
+                    </Button>
                   </Link>
                 </div>
               </div>
@@ -103,7 +140,11 @@ export default function SongDetail() {
             <section>
               <div className="p-8 border border-border bg-card text-center">
                 <h3 className="font-serif text-xl font-bold mb-2">No Active Round</h3>
-                <p className="text-muted-foreground">The curators are reviewing commits or preparing the next phase.</p>
+                <p className="text-muted-foreground">
+                  {song.phase === "accents"
+                    ? "The structure is locked. Curators are preparing the next accent round."
+                    : "Curators are reviewing commits or preparing to open the next structure round."}
+                </p>
               </div>
             </section>
           )}
@@ -197,9 +238,16 @@ export default function SongDetail() {
                 <div className="text-2xl font-serif font-bold text-foreground mb-1">{song.totalVotes}</div>
                 <div className="text-xs uppercase tracking-widest text-muted-foreground">Votes</div>
               </div>
-              <div className="bg-card border border-border p-4 col-span-2">
+              <div className="bg-card border border-border p-4">
                 <div className="text-2xl font-serif font-bold text-foreground mb-1">{song.versionCount}</div>
                 <div className="text-xs uppercase tracking-widest text-muted-foreground">Official Versions</div>
+              </div>
+              <div className="bg-card border border-border p-4">
+                <div className="text-2xl font-serif font-bold text-foreground mb-1">
+                  {song.structureRoundsCompleted}
+                  <span className="text-muted-foreground text-sm"> · {song.accentRoundsCompleted}</span>
+                </div>
+                <div className="text-xs uppercase tracking-widest text-muted-foreground">Structure · Accent</div>
               </div>
             </div>
           </section>
