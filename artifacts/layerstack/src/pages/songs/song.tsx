@@ -176,6 +176,11 @@ export default function SongDetail() {
                     </li>
                   ))}
                 </ul>
+                <div className="pt-2 text-xs uppercase tracking-widest">
+                  <Link href="/licenses" className="text-primary hover:underline">
+                    All third-party licenses →
+                  </Link>
+                </div>
               </div>
             </section>
           )}

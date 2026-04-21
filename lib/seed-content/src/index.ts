@@ -109,3 +109,68 @@ export const DEMO_SONG_CREDITS: DemoSongCredit[] = [
 export function formatCreditLine(credit: DemoSongCredit): string {
   return `"${credit.title}" \u2014 ${credit.author}, ${CC_BY_3_LICENSE.name}`;
 }
+
+/**
+ * Site-wide registry of third-party assets that require attribution.
+ *
+ * To add a new attributable asset (cover image, font, icon set, sound effect,
+ * etc.), append a single entry below. The /licenses page renders this list
+ * grouped by `category`, so no UI changes are required.
+ */
+export type LicenseRef = {
+  name: string;
+  url: string;
+};
+
+export type ThirdPartyAsset = {
+  /** Stable id used as React key. */
+  id: string;
+  /** Grouping label, e.g. "Demo Song Audio", "Icons", "Fonts". */
+  category: string;
+  /** Asset title as it appears at the source. */
+  title: string;
+  /** Author / creator / maintainer. */
+  author: string;
+  /** Where / how the asset is used in LayerStack. */
+  usage: string;
+  /** Public URL to the asset's source / info page. */
+  sourceUrl: string;
+  /** License the asset is distributed under. */
+  license: LicenseRef;
+};
+
+export const THIRD_PARTY_ASSETS: ThirdPartyAsset[] = [
+  ...DEMO_SONG_CREDITS.map<ThirdPartyAsset>((credit) => ({
+    id: `demo-audio:${credit.key}`,
+    category: "Demo Song Audio",
+    title: credit.title,
+    author: credit.author,
+    usage: `Used as ${credit.key.replace(/^seed\//, "")} in "The Long Room" demo song.`,
+    sourceUrl: credit.sourcePage,
+    license: CC_BY_3_LICENSE,
+  })),
+  {
+    id: "icons:lucide",
+    category: "Icons",
+    title: "Lucide Icons",
+    author: "Lucide contributors",
+    usage: "UI iconography across the LayerStack web app.",
+    sourceUrl: "https://lucide.dev/",
+    license: {
+      name: "ISC License",
+      url: "https://github.com/lucide-icons/lucide/blob/main/LICENSE",
+    },
+  },
+  {
+    id: "fonts:geist",
+    category: "Fonts",
+    title: "Geist",
+    author: "Vercel",
+    usage: "Primary sans-serif typeface used throughout the interface.",
+    sourceUrl: "https://vercel.com/font",
+    license: {
+      name: "SIL Open Font License 1.1",
+      url: "https://github.com/vercel/geist-font/blob/main/LICENSE.TXT",
+    },
+  },
+];
