@@ -422,6 +422,33 @@ export const ListVersionsForSongResponse = zod.array(
   ListVersionsForSongResponseItem,
 );
 
+/**
+ * @summary All third-party credits across every song (for the global /licenses page)
+ */
+export const ListAllCreditsResponseItem = zod
+  .object({
+    id: zod.string().uuid(),
+    songId: zod.string().uuid(),
+    title: zod.string(),
+    author: zod.string(),
+    sourceUrl: zod.string(),
+    licenseName: zod.string(),
+    licenseUrl: zod.string(),
+    role: zod.string().nullish(),
+    sortOrder: zod.number(),
+    createdAt: zod.coerce.date(),
+  })
+  .and(
+    zod.object({
+      song: zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        title: zod.string(),
+      }),
+    }),
+  );
+export const ListAllCreditsResponse = zod.array(ListAllCreditsResponseItem);
+
 export const ListCreditsParams = zod.object({
   songId: zod.coerce.string().uuid(),
 });
@@ -483,6 +510,7 @@ export const ListCommitsForRoundResponseItem = zod.object({
   instrumentType: zod.string(),
   audioFileUrl: zod.string(),
   previewMixUrl: zod.string().nullish(),
+  baseAudioUrl: zod.string().nullish(),
   status: zod.enum(["pending", "shortlisted", "merged", "rejected"]),
   voteCount: zod.number(),
   hasVoted: zod.boolean().optional(),
@@ -524,6 +552,7 @@ export const ListCommitsResponseItem = zod.object({
   instrumentType: zod.string(),
   audioFileUrl: zod.string(),
   previewMixUrl: zod.string().nullish(),
+  baseAudioUrl: zod.string().nullish(),
   status: zod.enum(["pending", "shortlisted", "merged", "rejected"]),
   voteCount: zod.number(),
   hasVoted: zod.boolean().optional(),
@@ -562,6 +591,7 @@ export const ListRisingCommitsResponseItem = zod.object({
   instrumentType: zod.string(),
   audioFileUrl: zod.string(),
   previewMixUrl: zod.string().nullish(),
+  baseAudioUrl: zod.string().nullish(),
   status: zod.enum(["pending", "shortlisted", "merged", "rejected"]),
   voteCount: zod.number(),
   hasVoted: zod.boolean().optional(),
@@ -597,6 +627,7 @@ export const GetCommitResponse = zod
     instrumentType: zod.string(),
     audioFileUrl: zod.string(),
     previewMixUrl: zod.string().nullish(),
+    baseAudioUrl: zod.string().nullish(),
     status: zod.enum(["pending", "shortlisted", "merged", "rejected"]),
     voteCount: zod.number(),
     hasVoted: zod.boolean().optional(),
@@ -675,6 +706,7 @@ export const SubmitCommitResponse = zod
     instrumentType: zod.string(),
     audioFileUrl: zod.string(),
     previewMixUrl: zod.string().nullish(),
+    baseAudioUrl: zod.string().nullish(),
     status: zod.enum(["pending", "shortlisted", "merged", "rejected"]),
     voteCount: zod.number(),
     hasVoted: zod.boolean().optional(),
@@ -1020,6 +1052,7 @@ export const AdminListCommitsResponseItem = zod.object({
   instrumentType: zod.string(),
   audioFileUrl: zod.string(),
   previewMixUrl: zod.string().nullish(),
+  baseAudioUrl: zod.string().nullish(),
   status: zod.enum(["pending", "shortlisted", "merged", "rejected"]),
   voteCount: zod.number(),
   hasVoted: zod.boolean().optional(),
@@ -1057,6 +1090,7 @@ export const AdminSetCommitStatusResponse = zod
     instrumentType: zod.string(),
     audioFileUrl: zod.string(),
     previewMixUrl: zod.string().nullish(),
+    baseAudioUrl: zod.string().nullish(),
     status: zod.enum(["pending", "shortlisted", "merged", "rejected"]),
     voteCount: zod.number(),
     hasVoted: zod.boolean().optional(),

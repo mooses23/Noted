@@ -136,6 +136,10 @@ router.post("/rounds", async (req: Request, res: Response) => {
     .select({ maxNum: sql<number>`coalesce(max(${roundsTable.roundNumber}), 0)::int` })
     .from(roundsTable)
     .where(eq(roundsTable.songId, b.songId));
+  const [song] = await db
+    .select({ currentVersionId: songsTable.currentVersionId })
+    .from(songsTable)
+    .where(eq(songsTable.id, b.songId));
   const [created] = await db
     .insert(roundsTable)
     .values({
@@ -147,6 +151,7 @@ router.post("/rounds", async (req: Request, res: Response) => {
       status: b.status ?? "open",
       opensAt: b.opensAt ? new Date(b.opensAt) : new Date(),
       closesAt: b.closesAt ? new Date(b.closesAt) : null,
+      baseVersionId: song?.currentVersionId ?? null,
     })
     .returning();
   res.json(toRound(created!));

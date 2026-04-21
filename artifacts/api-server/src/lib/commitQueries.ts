@@ -12,6 +12,7 @@ import {
   type Round,
   type Commit,
 } from "@workspace/db";
+import { alias } from "drizzle-orm/pg-core";
 import { and, desc, eq, inArray, sql, SQL } from "drizzle-orm";
 
 export type CommitRow = {
@@ -21,6 +22,7 @@ export type CommitRow = {
   round: Round;
   voteCount: number;
   hasVoted: boolean;
+  baseAudioUrl: string | null;
 };
 
 export async function fetchCommitRows(
@@ -32,6 +34,7 @@ export async function fetchCommitRows(
   } = {},
 ): Promise<CommitRow[]> {
   const voterId = opts.voterId ?? null;
+  const baseVersion = alias(versionsTable, "base_version");
 
   const rows = await db
     .select({
@@ -39,6 +42,7 @@ export async function fetchCommitRows(
       contributor: profilesTable,
       song: songsTable,
       round: roundsTable,
+      baseAudioUrl: baseVersion.officialMixUrl,
       voteCount: sql<number>`(
         select count(*)::int from ${votesTable}
         where ${votesTable.commitId} = ${commitsTable.id}
@@ -55,6 +59,7 @@ export async function fetchCommitRows(
     .innerJoin(profilesTable, eq(profilesTable.id, commitsTable.contributorId))
     .innerJoin(songsTable, eq(songsTable.id, commitsTable.songId))
     .innerJoin(roundsTable, eq(roundsTable.id, commitsTable.roundId))
+    .leftJoin(baseVersion, eq(baseVersion.id, roundsTable.baseVersionId))
     .where(where)
     .orderBy(
       opts.sort === "top"

@@ -105,6 +105,7 @@ export type CommitRow = {
   round: Round;
   voteCount: number;
   hasVoted: boolean;
+  baseAudioUrl: string | null;
 };
 
 export const toCommitSummary = (r: CommitRow) => ({
@@ -117,6 +118,7 @@ export const toCommitSummary = (r: CommitRow) => ({
   instrumentType: r.commit.instrumentType,
   audioFileUrl: r.commit.audioFileUrl,
   previewMixUrl: r.commit.previewMixUrl ?? null,
+  baseAudioUrl: r.baseAudioUrl ?? null,
   status: r.commit.status,
   voteCount: r.voteCount,
   hasVoted: r.hasVoted,

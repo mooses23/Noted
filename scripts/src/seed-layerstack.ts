@@ -156,7 +156,7 @@ async function main() {
     ]);
   }
 
-  // 5. Round 1 — already merged (bass)
+  // 5. Round 1 — already merged (bass). Submitted against v1.
   let [round1] = await db
     .select()
     .from(roundsTable)
@@ -172,10 +172,17 @@ async function main() {
         description: "Lay down the low end. Upright, electric, sub — whatever fits.",
         allowedInstrumentType: "bass",
         status: "merged",
+        baseVersionId: v1!.id,
         opensAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 14),
         closesAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7),
       })
       .returning();
+  } else if (!round1.baseVersionId) {
+    await db
+      .update(roundsTable)
+      .set({ baseVersionId: v1!.id, updatedAt: new Date() })
+      .where(eq(roundsTable.id, round1.id));
+    round1.baseVersionId = v1!.id;
   }
 
   // A merged bass commit by Jules
@@ -195,6 +202,7 @@ async function main() {
         note: "Tried to stay out of the way of the piano. One take, a little breath on the low D.",
         instrumentType: "bass",
         audioFileUrl: "/objects/seed/commit-jules-bass.mp3",
+        previewMixUrl: "/objects/seed/the-long-room-v2.mp3",
         status: "merged",
         confirmedHumanMade: true,
         confirmedRightsGrant: true,
@@ -255,10 +263,17 @@ async function main() {
           "Brushes or sticks — your call. Keep the room in it. No triggers, no samples.",
         allowedInstrumentType: "drums",
         status: "open",
+        baseVersionId: v2!.id,
         opensAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
         closesAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 4),
       })
       .returning();
+  } else if (!round2.baseVersionId) {
+    await db
+      .update(roundsTable)
+      .set({ baseVersionId: v2!.id, updatedAt: new Date() })
+      .where(eq(roundsTable.id, round2.id));
+    round2.baseVersionId = v2!.id;
   }
 
   // 8. Five mock drum commits
@@ -295,6 +310,11 @@ async function main() {
     },
   ];
 
+  // Placeholder layered preview for drum commits (CC BY 3.0 stand-in: v1 mix).
+  // We don't actually render drum-layered audio at seed time — this gives the
+  // comparator something audibly distinct from the v2 base mix to play.
+  const drumLayeredPlaceholder = "/objects/seed/the-long-room-v1.mp3";
+
   const existingDrumCommits = await db
     .select()
     .from(commitsTable)
@@ -312,6 +332,7 @@ async function main() {
           note: s.note,
           instrumentType: "drums",
           audioFileUrl: s.url,
+          previewMixUrl: drumLayeredPlaceholder,
           status: "pending",
           confirmedHumanMade: true,
           confirmedRightsGrant: true,
@@ -320,7 +341,26 @@ async function main() {
       drumCommits.push(c!);
     }
   } else {
-    drumCommits.push(...existingDrumCommits);
+    for (const c of existingDrumCommits) {
+      if (!c.previewMixUrl) {
+        await db
+          .update(commitsTable)
+          .set({ previewMixUrl: drumLayeredPlaceholder, updatedAt: new Date() })
+          .where(eq(commitsTable.id, c.id));
+      }
+      drumCommits.push(c);
+    }
+  }
+
+  // Backfill jules's bass commit previewMixUrl (v2 mix actually contains the bass).
+  if (julesCommit && !julesCommit.previewMixUrl) {
+    await db
+      .update(commitsTable)
+      .set({
+        previewMixUrl: "/objects/seed/the-long-room-v2.mp3",
+        updatedAt: new Date(),
+      })
+      .where(eq(commitsTable.id, julesCommit.id));
   }
 
   // 9. Seed votes — distribute

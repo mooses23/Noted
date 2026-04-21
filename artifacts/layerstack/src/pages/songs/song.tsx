@@ -1,6 +1,7 @@
 import { useParams, Link } from "wouter";
 import { useGetSongBySlug, useListCommitsForRound, getGetSongBySlugQueryKey, getListCommitsForRoundQueryKey, ListCommitsForRoundSort, useVoteOnCommit, useUnvoteCommit, useGetCurrentUser } from "@workspace/api-client-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
+import { CommitAudioComparator } from "@/components/CommitAudioComparator";
 import { Button } from "@/components/ui/button";
 import { Disc3, Download, Clock, ThumbsUp, FileAudio } from "lucide-react";
 import { format } from "date-fns";
@@ -269,7 +270,7 @@ function CommitsList({ roundId }: { roundId: string }) {
                 <span className="font-mono">{commit.voteCount}</span>
               </Button>
             </div>
-            <AudioPlayer url={commit.audioFileUrl} title={commit.title} className="bg-background border-border p-2" />
+            <CommitAudioComparator commit={commit} />
           </div>
         );
       })}

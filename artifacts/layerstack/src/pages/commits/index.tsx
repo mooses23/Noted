@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { useListCommits } from "@workspace/api-client-react";
-import { AudioPlayer } from "@/components/AudioPlayer";
+import { CommitAudioComparator } from "@/components/CommitAudioComparator";
 import { Disc3 } from "lucide-react";
 
 export default function Commits() {
@@ -47,11 +47,7 @@ export default function Commits() {
                 </div>
                 
                 <div className="w-full md:w-1/2 flex-shrink-0 flex flex-col gap-3">
-                  <AudioPlayer 
-                    url={commit.audioFileUrl} 
-                    title={commit.title}
-                    className="bg-background border-border p-2"
-                  />
+                  <CommitAudioComparator commit={commit} />
                   <div className="flex justify-between items-center px-1">
                     <div className="text-xs uppercase tracking-widest text-primary font-bold">
                       {commit.status}

@@ -44,6 +44,7 @@ import type {
   Round,
   Song,
   SongCredit,
+  SongCreditWithSong,
   SongDetail,
   SongFile,
   SubmitCommitBody,
@@ -767,6 +768,81 @@ export function useListVersionsForSong<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getListVersionsForSongQueryOptions(songId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary All third-party credits across every song (for the global /licenses page)
+ */
+export const getListAllCreditsUrl = () => {
+  return `/api/credits`;
+};
+
+export const listAllCredits = async (
+  options?: RequestInit,
+): Promise<SongCreditWithSong[]> => {
+  return customFetch<SongCreditWithSong[]>(getListAllCreditsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAllCreditsQueryKey = () => {
+  return [`/api/credits`] as const;
+};
+
+export const getListAllCreditsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAllCredits>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAllCredits>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAllCreditsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAllCredits>>> = ({
+    signal,
+  }) => listAllCredits({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAllCredits>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAllCreditsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAllCredits>>
+>;
+export type ListAllCreditsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary All third-party credits across every song (for the global /licenses page)
+ */
+
+export function useListAllCredits<
+  TData = Awaited<ReturnType<typeof listAllCredits>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAllCredits>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAllCreditsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

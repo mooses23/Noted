@@ -139,16 +139,13 @@ export type ThirdPartyAsset = {
   license: LicenseRef;
 };
 
+/**
+ * Site-wide third-party assets that are NOT tied to a specific song
+ * (icons, fonts, etc.). Per-song audio credits live in the database
+ * (see `song_credits` table) and are surfaced on /licenses by querying
+ * the API, so they are intentionally not duplicated here.
+ */
 export const THIRD_PARTY_ASSETS: ThirdPartyAsset[] = [
-  ...DEMO_SONG_CREDITS.map<ThirdPartyAsset>((credit) => ({
-    id: `demo-audio:${credit.key}`,
-    category: "Demo Song Audio",
-    title: credit.title,
-    author: credit.author,
-    usage: `Used as ${credit.key.replace(/^seed\//, "")} in "The Long Room" demo song.`,
-    sourceUrl: credit.sourcePage,
-    license: CC_BY_3_LICENSE,
-  })),
   {
     id: "icons:lucide",
     category: "Icons",
