@@ -180,7 +180,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               <span className="font-serif text-lg tracking-tighter text-muted-foreground">Noted</span>
             </div>
             <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-              The collaborative, human-made music platform. We build songs together, one instrument layer at a time. No AI allowed.
+              The collaborative, human-made music platform. Songs grow structure-first, then take on their accents. No AI allowed.
             </p>
           </div>
           <div>

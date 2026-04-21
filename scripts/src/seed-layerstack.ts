@@ -557,48 +557,159 @@ async function seedAccentsPhaseDemo(p: {
     ]);
   }
 
-  // Open accent round (multi-merge)
+  // Round 3 — first accent round, MERGED (multi-merge → produces v2)
   const allRounds = await db.select().from(roundsTable).where(eq(roundsTable.songId, songId));
-  let accentRound = allRounds.find((r) => r.roundNumber === 3);
-  if (!accentRound) {
-    [accentRound] = await db
+  let accentMergedRound = allRounds.find((r) => r.roundNumber === 3);
+  if (accentMergedRound && accentMergedRound.status !== "merged") {
+    await db
+      .update(roundsTable)
+      .set({ status: "merged", kind: "accent", mergeBehavior: "multi", updatedAt: new Date() })
+      .where(eq(roundsTable.id, accentMergedRound.id));
+    accentMergedRound = { ...accentMergedRound, status: "merged" };
+  }
+  if (!accentMergedRound) {
+    [accentMergedRound] = await db
       .insert(roundsTable)
       .values({
         songId,
         roundNumber: 3,
-        title: "Round 3 — Claps & one-shots",
+        title: "Round 3 — First accents",
+        description: "Two takes were merged together — a clap pattern and a vocal stab.",
+        allowedInstrumentType: "percussion",
+        kind: "accent",
+        mergeBehavior: "multi",
+        status: "merged",
+        baseVersionId: foundation!.id,
+        opensAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12),
+        closesAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 6),
+      })
+      .returning();
+  }
+
+  // Two MERGED accent commits on the historical accent round
+  const mergedAccentSeeds = [
+    { contributor: p.kenji, title: "Stadium claps, 2 & 4", url: "/objects/seed/commit-kenji-drums.mp3" },
+    { contributor: p.ilse,  title: "Vocal stab on the turn", url: "/objects/seed/commit-ilse-drums.mp3" },
+  ];
+  const existingMergedAccents = await db
+    .select()
+    .from(commitsTable)
+    .where(eq(commitsTable.roundId, accentMergedRound!.id));
+  const mergedAccentCommits: { id: string; contributorId: string }[] = [];
+  if (existingMergedAccents.length === 0) {
+    for (const s of mergedAccentSeeds) {
+      const [c] = await db
+        .insert(commitsTable)
+        .values({
+          songId,
+          roundId: accentMergedRound!.id,
+          contributorId: s.contributor.id,
+          title: s.title,
+          instrumentType: "percussion",
+          kind: "accent",
+          audioFileUrl: s.url,
+          previewMixUrl: "/objects/seed/the-long-room-v2.mp3",
+          status: "merged",
+          confirmedHumanMade: true,
+          confirmedRightsGrant: true,
+          createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 8),
+        })
+        .returning();
+      mergedAccentCommits.push(c!);
+    }
+  } else {
+    // Promote the first 2 pending accent commits to merged so the arc stays intact
+    let promoted = 0;
+    for (const c of existingMergedAccents) {
+      if (promoted < 2 && c.status !== "merged") {
+        await db
+          .update(commitsTable)
+          .set({ status: "merged", updatedAt: new Date() })
+          .where(eq(commitsTable.id, c.id));
+        mergedAccentCommits.push({ ...c, status: "merged" } as typeof c);
+        promoted++;
+      } else if (c.status === "merged") {
+        mergedAccentCommits.push(c);
+      }
+    }
+  }
+
+  // v2 — both accent commits stacked on top of v1 (foundation)
+  let accentVersion = versions.find((v) => v.versionNumber === 2);
+  if (!accentVersion) {
+    accentVersion = (
+      await db.select().from(versionsTable).where(eq(versionsTable.songId, songId))
+    ).find((v) => v.versionNumber === 2);
+  }
+  if (!accentVersion) {
+    await db
+      .update(versionsTable)
+      .set({ isCurrent: false })
+      .where(eq(versionsTable.songId, songId));
+    [accentVersion] = await db
+      .insert(versionsTable)
+      .values({
+        songId,
+        versionNumber: 2,
+        title: "v2 — First accents in",
+        description: "Stadium claps + a vocal stab, both stacked on the foundation.",
+        officialMixUrl: "/objects/seed/the-long-room-v2.mp3",
+        isCurrent: true,
+      })
+      .returning();
+    for (const c of mergedAccentCommits) {
+      await db.insert(versionMergesTable).values({
+        versionId: accentVersion!.id,
+        commitId: c.id,
+        contributorId: c.contributorId,
+        mergeNote: "Layered onto the foundation. No edits beyond a touch of glue compression.",
+      });
+    }
+    await db
+      .update(songsTable)
+      .set({ currentVersionId: accentVersion!.id, updatedAt: new Date() })
+      .where(eq(songsTable.id, songId));
+  }
+
+  // Round 4 — second accent round, OPEN (multi-merge)
+  const refreshedRounds = await db.select().from(roundsTable).where(eq(roundsTable.songId, songId));
+  let openAccentRound = refreshedRounds.find((r) => r.roundNumber === 4);
+  if (!openAccentRound) {
+    [openAccentRound] = await db
+      .insert(roundsTable)
+      .values({
+        songId,
+        roundNumber: 4,
+        title: "Round 4 — More signature moments",
         description:
-          "Signature moments only. Short takes, single hits, anything with character. Multiple winners may be merged.",
+          "Short takes, single hits, anything with character. Multiple winners may be stacked into the next mix.",
         allowedInstrumentType: "percussion",
         kind: "accent",
         mergeBehavior: "multi",
         status: "open",
-        baseVersionId: foundation!.id,
+        baseVersionId: accentVersion!.id,
         opensAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
         closesAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5),
       })
       .returning();
   }
 
-  // Mock accent commits — short / signature
-  const accentSubmissions = [
-    { contributor: p.kenji,  title: "808 clap, downbeats 2 & 4", url: "/objects/seed/commit-kenji-drums.mp3" },
-    { contributor: p.sade,   title: "Rim snap, off-grid",        url: "/objects/seed/commit-sade-drums.mp3" },
-    { contributor: p.thiago, title: "Hand-claps, room mic",      url: "/objects/seed/commit-thiago-drums.mp3" },
-    { contributor: p.ilse,   title: "Ad-lib 'oh' on the turn",   url: "/objects/seed/commit-ilse-drums.mp3" },
+  const openAccentSeeds = [
+    { contributor: p.sade,   title: "Rim snap, off-grid",      url: "/objects/seed/commit-sade-drums.mp3" },
+    { contributor: p.thiago, title: "Hand-claps, room mic",    url: "/objects/seed/commit-thiago-drums.mp3" },
   ];
-  const existingAccentCommits = await db
+  const existingOpenAccents = await db
     .select()
     .from(commitsTable)
-    .where(eq(commitsTable.roundId, accentRound!.id));
-  const accentCommits: { id: string; contributorId: string }[] = [];
-  if (existingAccentCommits.length === 0) {
-    for (const s of accentSubmissions) {
+    .where(eq(commitsTable.roundId, openAccentRound!.id));
+  const openAccentCommits: { id: string; contributorId: string }[] = [];
+  if (existingOpenAccents.length === 0) {
+    for (const s of openAccentSeeds) {
       const [c] = await db
         .insert(commitsTable)
         .values({
           songId,
-          roundId: accentRound!.id,
+          roundId: openAccentRound!.id,
           contributorId: s.contributor.id,
           title: s.title,
           instrumentType: "percussion",
@@ -610,16 +721,16 @@ async function seedAccentsPhaseDemo(p: {
           confirmedRightsGrant: true,
         })
         .returning();
-      accentCommits.push(c!);
+      openAccentCommits.push(c!);
     }
   } else {
-    for (const c of existingAccentCommits) accentCommits.push(c);
+    for (const c of existingOpenAccents) openAccentCommits.push(c);
   }
 
-  // Spread votes — accents tend to gather many, smaller bouquets
+  // Spread votes across both merged + open accents
   const voters = [p.mara, p.jules, p.kenji, p.ilse, p.sade, p.thiago, p.alex];
-  for (let i = 0; i < accentCommits.length; i++) {
-    const commit = accentCommits[i];
+  for (let i = 0; i < openAccentCommits.length; i++) {
+    const commit = openAccentCommits[i];
     const pool = voters.slice(0, 3 + ((i * 2) % voters.length));
     for (const v of pool) {
       if (v.id === commit!.contributorId) continue;

@@ -206,6 +206,34 @@ router.post("/rounds", async (req: Request, res: Response) => {
 router.patch("/rounds/:roundId", async (req: Request, res: Response) => {
   const b = parseBody(AdminUpdateRoundBody, req.body, res);
   if (!b) return;
+  if (b.kind !== undefined) {
+    const [existingRound] = await db
+      .select({ songId: roundsTable.songId })
+      .from(roundsTable)
+      .where(eq(roundsTable.id, req.params.roundId as string));
+    if (!existingRound) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const [parentSong] = await db
+      .select({ phase: songsTable.phase })
+      .from(songsTable)
+      .where(eq(songsTable.id, existingRound.songId));
+    if (parentSong?.phase === "structure" && b.kind === "accent") {
+      res.status(400).json({
+        error:
+          "Can't change a round to accent while the song is still in the structure phase. Advance the song first.",
+      });
+      return;
+    }
+    if (parentSong?.phase === "accents" && b.kind === "structure") {
+      res.status(400).json({
+        error:
+          "Can't change a round back to structure while the song is in the accents phase. Revert the song first.",
+      });
+      return;
+    }
+  }
   const [updated] = await db
     .update(roundsTable)
     .set({
