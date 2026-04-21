@@ -75,14 +75,29 @@ function runFfmpeg(args: string[]): Promise<void> {
 export async function mixLayeredAudio(opts: {
   baseObjectPath: string;
   commitObjectPaths: string[];
+  /**
+   * Per-commit start offset in seconds (same length as commitObjectPaths).
+   * When provided and > 0, the matching commit input is delayed by that
+   * many seconds before being summed into the mix. Defaults to all zeros
+   * (commits start at the same instant as the base).
+   */
+  commitOffsetsSeconds?: number[];
 }): Promise<{ buffer: Buffer; mimeType: string; sizeBytes: number }> {
-  const { baseObjectPath, commitObjectPaths } = opts;
+  const { baseObjectPath, commitObjectPaths, commitOffsetsSeconds } = opts;
   if (commitObjectPaths.length === 0) {
     throw new AudioMixError("At least one commit is required to mix.");
   }
   if (commitObjectPaths.length + 1 > MAX_INPUTS) {
     throw new AudioMixError(
       `Too many inputs to auto-mix (max ${MAX_INPUTS - 1} commits).`,
+    );
+  }
+  if (
+    commitOffsetsSeconds &&
+    commitOffsetsSeconds.length !== commitObjectPaths.length
+  ) {
+    throw new AudioMixError(
+      "commitOffsetsSeconds length must match commitObjectPaths length.",
     );
   }
 
@@ -99,6 +114,28 @@ export async function mixLayeredAudio(opts: {
       inputPaths.push(dest);
     }
 
+    // Build a filter graph that optionally pre-delays each commit input by
+    // its overlayOffsetSeconds (using `adelay` with the same delay on both
+    // channels) before summing everything with `amix`. The base track is
+    // never delayed; index 0 in inputPaths is the base.
+    const filterParts: string[] = [];
+    const amixLabels: string[] = ["[0:a]"];
+    for (let i = 0; i < commitObjectPaths.length; i++) {
+      const inputIdx = i + 1;
+      const offsetSec = Math.max(0, commitOffsetsSeconds?.[i] ?? 0);
+      if (offsetSec > 0) {
+        const delayMs = Math.round(offsetSec * 1000);
+        const label = `[d${i}]`;
+        filterParts.push(`[${inputIdx}:a]adelay=${delayMs}|${delayMs}${label}`);
+        amixLabels.push(label);
+      } else {
+        amixLabels.push(`[${inputIdx}:a]`);
+      }
+    }
+    filterParts.push(
+      `${amixLabels.join("")}amix=inputs=${inputPaths.length}:duration=longest:dropout_transition=0:normalize=0`,
+    );
+
     const out = path.join(work, "mix.mp3");
     const args: string[] = ["-hide_banner", "-loglevel", "error"];
     for (const ip of inputPaths) {
@@ -106,7 +143,7 @@ export async function mixLayeredAudio(opts: {
     }
     args.push(
       "-filter_complex",
-      `amix=inputs=${inputPaths.length}:duration=longest:dropout_transition=0:normalize=0`,
+      filterParts.join(";"),
       "-ac",
       "2",
       "-c:a",
@@ -165,6 +202,33 @@ export async function uploadAutoMix(
     resumable: false,
   });
   return `/objects/songs/${songId}/versions/${objectId}`;
+}
+
+/**
+ * Persist an auto-mixed buffer for a single commit's "with commit" preview
+ * under that commit's namespace. Kept in a separate directory from version
+ * auto-mixes so version cleanup never sweeps these away.
+ */
+export async function uploadCommitPreviewMix(
+  songId: string,
+  commitId: string,
+  buffer: Buffer,
+): Promise<string> {
+  const dir = process.env.PRIVATE_OBJECT_DIR;
+  if (!dir) {
+    throw new AudioMixError(
+      "PRIVATE_OBJECT_DIR not set; cannot persist commit preview mix.",
+    );
+  }
+  const objectId = `${randomUUID()}-automix.mp3`;
+  const fullPath = `${dir.replace(/\/+$/, "")}/songs/${songId}/commits/${commitId}/${objectId}`;
+  const { bucketName, objectName } = parseObjectPath(fullPath);
+  const file = objectStorageClient.bucket(bucketName).file(objectName);
+  await file.save(buffer, {
+    contentType: "audio/mpeg",
+    resumable: false,
+  });
+  return `/objects/songs/${songId}/commits/${commitId}/${objectId}`;
 }
 
 /**

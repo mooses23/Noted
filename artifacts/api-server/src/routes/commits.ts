@@ -13,6 +13,7 @@ import { fetchCommitRows, fetchCommitById, fetchMergedVersionForCommit } from ".
 import { toCommitSummary, toRound, toVersion } from "../lib/shapes";
 import { SubmitCommitBody } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { generateAndStoreCommitPreviewMix } from "../lib/commitPreviewMix";
 
 const CommitsListQuery = z.object({
   songId: z.string().min(1).optional(),
@@ -263,6 +264,20 @@ router.post("/commits/submit", requireAuth, async (req: Request, res: Response) 
       confirmedRightsGrant: true,
     })
     .returning();
+
+  // Kick off the layered "with commit" preview generation — mixes this
+  // commit's stem on top of the round's base version. Fire-and-forget so
+  // the submit response stays snappy (ffmpeg + downloads can take many
+  // seconds and would risk gateway timeouts). The helper writes the
+  // resulting URL back onto the commit row on success; on failure the
+  // comparator simply hides the layered row.
+  void generateAndStoreCommitPreviewMix({
+    commitId: created!.id,
+    songId: round.songId,
+    roundId: round.id,
+    audioFileUrl: body.audioObjectPath,
+    overlayOffsetSeconds: body.overlayOffsetSeconds ?? 0,
+  });
 
   const row = await fetchCommitById(created!.id, profile.id);
   if (!row) {
