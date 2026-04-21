@@ -234,6 +234,7 @@ On the **`layerstack-web`** Vercel project add (Production + Preview):
 | `VITE_SENTRY_DSN`                 | DSN of the `layerstack-web` Sentry project         |
 | `VITE_SENTRY_ENVIRONMENT`         | `production` (Vercel sets `VERCEL_ENV` for preview) |
 | `VITE_SENTRY_RELEASE`             | `$VERCEL_GIT_COMMIT_SHA`                           |
+| `VITE_SENTRY_TRACES_SAMPLE_RATE`  | optional, defaults to `0.1` when DSN is set (see §8.6) |
 | `SENTRY_AUTH_TOKEN`               | Internal Integration token with `project:releases` |
 | `SENTRY_ORG`                      | Sentry org slug                                    |
 | `SENTRY_PROJECT`                  | `layerstack-web`                                   |
@@ -250,7 +251,7 @@ On the **`layerstack-api`** Vercel project add (Production + Preview):
 | `SENTRY_DSN`                   | DSN of the `layerstack-api` Sentry project         |
 | `SENTRY_ENVIRONMENT`           | optional, defaults to `VERCEL_ENV`/`NODE_ENV`      |
 | `SENTRY_RELEASE`               | optional, defaults to `VERCEL_GIT_COMMIT_SHA`      |
-| `SENTRY_TRACES_SAMPLE_RATE`    | optional, `0` by default (set `0.1` to enable APM) |
+| `SENTRY_TRACES_SAMPLE_RATE`    | optional, defaults to `0.1` when DSN is set (see §8.6) |
 
 The API serverless handler initializes Sentry on cold start, captures any
 unhandled Express errors via `Sentry.setupExpressErrorHandler`, and flushes
@@ -307,9 +308,58 @@ After step 8.2 your team should bookmark:
 
 - `https://<org>.sentry.io/projects/layerstack-web/` — frontend errors
 - `https://<org>.sentry.io/projects/layerstack-api/` — backend errors
+- `https://<org>.sentry.io/performance/?project=layerstack-api` — API
+  latency by route (p50/p95/p99). Populated automatically once
+  `SENTRY_DSN` is set; see §8.6 to tune the sample rate.
 - `https://vercel.com/<team>/layerstack-web/logs` — raw frontend logs
 - `https://vercel.com/<team>/layerstack-api/logs` — raw backend logs
 - The log-drain destination dashboard (Datadog / Axiom / etc.)
+
+### 8.6 Performance tracing (sampled APM)
+
+Error reporting only catches outright crashes. Slow Postgres queries, slow
+GCS reads, sluggish cold starts, and gradual route latency regressions
+won't surface in the Issues tab — users feel them long before anything
+"breaks". Sentry's performance tracing fills that gap by sampling a
+fraction of requests as **transactions**, breaking each one down into
+spans (HTTP handler → DB query → GCS call → response).
+
+**Defaults.** When `SENTRY_DSN` / `VITE_SENTRY_DSN` are set, both
+artifacts default `tracesSampleRate` to **`0.1`** (10% of
+requests/sessions). That is enough volume to populate the Performance tab
+with stable p50/p95/p99 per route on low-to-mid traffic, while keeping
+transaction usage well inside the Sentry Team plan's monthly quota. Set
+`SENTRY_TRACES_SAMPLE_RATE` / `VITE_SENTRY_TRACES_SAMPLE_RATE` to
+override.
+
+**Trade-off.**
+
+| Sample rate | What you get                                           | Cost                                         |
+| ----------- | ------------------------------------------------------ | -------------------------------------------- |
+| `0`         | Errors only. No latency visibility.                    | Free (covered by error quota).               |
+| `0.1`       | Stable p50/p95/p99 per route at meaningful traffic.    | ~10% of requests count toward txn quota.     |
+| `0.5`+      | Catches rare slow spans (e.g. cold starts, p99 tails). | Halfway to "trace everything" pricing.       |
+| `1.0`       | Every request traced; full waterfall always available. | Only feasible on high-volume paid plans.     |
+
+Rule of thumb: start at `0.1`. If the Performance tab feels too sparse
+for a low-traffic route, bump to `0.5`. If you're getting close to your
+monthly transaction limit (Sentry → Stats → Usage), drop back to `0.05`
+or disable the noisier surface (typically the frontend).
+
+**Validating it's on.** After deploying with the env vars set:
+
+1. Hit a few API routes in production.
+2. Open Sentry → Performance → filter by `project:layerstack-api`.
+   Within a minute or two you should see transactions like
+   `GET /api/rounds`, `POST /api/commits`, etc. with duration
+   distributions.
+3. Click a transaction to inspect spans — you'll see the Express
+   handler, downstream `pg.query` calls, and any `gcs.*` operations.
+4. From a transaction's "Trace" view, set up an **alert** under
+   Performance → Alerts: e.g. *"p95 of `GET /api/rounds` > 1s for 5
+   minutes"* → notify the same Slack/PagerDuty destination wired in
+   §8.3. This is the bit that makes latency regressions actually wake
+   somebody up before users complain.
 
 ## Troubleshooting
 

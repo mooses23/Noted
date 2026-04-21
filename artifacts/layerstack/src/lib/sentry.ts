@@ -21,9 +21,22 @@ export function initSentry(): void {
       (import.meta.env.MODE as string | undefined) ??
       "production",
     release: import.meta.env.VITE_SENTRY_RELEASE as string | undefined,
-    tracesSampleRate: Number(
-      (import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE as string | undefined) ?? 0,
-    ),
+    // Default to a 10% trace sample when Sentry is enabled so we get route
+    // navigation timings (LCP, route change duration) without overwhelming
+    // Sentry quota. Override with VITE_SENTRY_TRACES_SAMPLE_RATE; set to 0
+    // to disable performance tracing while keeping error reporting on.
+    tracesSampleRate: (() => {
+      const raw = import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE as
+        | string
+        | undefined;
+      if (raw === undefined || raw === "") return 0.1;
+      const parsed = Number(raw);
+      // Clamp to [0,1]; fall back to the default on NaN so a typo can't
+      // silently disable tracing or send 100% of sessions.
+      return Number.isFinite(parsed) && parsed >= 0 && parsed <= 1
+        ? parsed
+        : 0.1;
+    })(),
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 0,
     sendDefaultPii: false,
