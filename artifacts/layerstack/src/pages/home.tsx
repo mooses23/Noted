@@ -35,7 +35,7 @@ export default function Home() {
           </h1>
           
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-12 font-sans">
-            Noted is where the community builds songs together, one instrument layer at a time. No AI allowed. Real hands on real instruments.
+            Noted is where songs grow in two phases. First the <strong className="text-foreground">structure</strong> — drums, bass, harmony, one round at a time. Then the <strong className="text-foreground">accents</strong> — claps, stabs, signature moments that make a song feel inevitable. No AI. Real hands on real instruments.
           </p>
 
           {isFeaturedLoading ? (
