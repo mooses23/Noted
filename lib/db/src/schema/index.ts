@@ -416,6 +416,33 @@ export const notificationsTable = pgTable(
   ],
 );
 
+/**
+ * Tracks which (draft, round) pairs we've already sent a "draft is now
+ * submittable" notification for, so toggling a round's status off/on or
+ * re-PATCHing it open never re-notifies the same contributor twice.
+ * Insert is paired with the notification row; rely on the unique index +
+ * onConflictDoNothing for idempotency.
+ */
+export const draftRoundNotificationsTable = pgTable(
+  "draft_round_notifications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    draftId: uuid("draft_id")
+      .notNull()
+      .references(() => commitDraftsTable.id, { onDelete: "cascade" }),
+    roundId: uuid("round_id")
+      .notNull()
+      .references(() => roundsTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("draft_round_notifications_uq").on(t.draftId, t.roundId),
+    index("draft_round_notifications_round_idx").on(t.roundId),
+  ],
+);
+
 export const adminActionsTable = pgTable("admin_actions", {
   id: uuid("id").defaultRandom().primaryKey(),
   actorId: uuid("actor_id").references(() => profilesTable.id, {
