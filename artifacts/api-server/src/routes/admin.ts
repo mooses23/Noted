@@ -33,10 +33,12 @@ import {
   AdminAdvanceSongPhaseBody,
   AdminSetCommitStatusBody,
   AdminCreateVersionBody,
+  AdminPreviewVersionMixBody,
   AdminCreateSongCreditBody,
   AdminUpdateSongCreditBody,
   AdminReorderSongCreditsBody,
 } from "@workspace/api-zod";
+import { mixLayeredAudio, uploadAutoMix, AudioMixError } from "../lib/audioMix";
 import { z } from "zod";
 
 function parseBody<S extends z.ZodTypeAny>(
@@ -308,6 +310,90 @@ router.patch("/commits/:commitId/status", async (req: Request, res: Response) =>
     round: toRound(row.round),
     mergedIntoVersion: mergedVersion ? toVersion(mergedVersion) : null,
   });
+});
+
+router.post("/versions/preview-mix", async (req: Request, res: Response) => {
+  const b = parseBody(AdminPreviewVersionMixBody, req.body, res);
+  if (!b) return;
+
+  // Resolve commits + their rounds, validate ownership / merge behavior the
+  // same way publish does so curators can't preview a mix that publish would
+  // ultimately reject.
+  const commits = await db
+    .select()
+    .from(commitsTable)
+    .where(inArray(commitsTable.id, b.mergedCommitIds));
+  if (commits.length !== b.mergedCommitIds.length) {
+    res.status(400).json({ error: "One or more merged commit IDs do not exist." });
+    return;
+  }
+  const foreign = commits.filter((c) => c.songId !== b.songId);
+  if (foreign.length > 0) {
+    res.status(400).json({
+      error: `Merged commits must belong to song ${b.songId}; found ${foreign.length} foreign commit(s).`,
+    });
+    return;
+  }
+  const roundIds = Array.from(new Set(commits.map((c) => c.roundId)));
+  const roundsForMerge = await db
+    .select()
+    .from(roundsTable)
+    .where(inArray(roundsTable.id, roundIds));
+  const validationError = validateMergeBehavior(
+    commits.map((c) => ({ id: c.id, roundId: c.roundId })),
+    roundsForMerge.map((r) => ({
+      id: r.id,
+      title: r.title,
+      mergeBehavior: r.mergeBehavior as "single" | "multi",
+    })),
+  );
+  if (validationError) {
+    res.status(400).json({ error: validationError });
+    return;
+  }
+
+  // Base track: use the song's current official version. That's what the
+  // next published version layers on top of, matching how curators would
+  // assemble the mix in a DAW today.
+  const [song] = await db
+    .select({ currentVersionId: songsTable.currentVersionId })
+    .from(songsTable)
+    .where(eq(songsTable.id, b.songId));
+  if (!song?.currentVersionId) {
+    res.status(400).json({
+      error:
+        "Song has no current version yet. Publish a v1 with a manually uploaded mix before using auto-mix.",
+    });
+    return;
+  }
+  const [baseVersion] = await db
+    .select({ officialMixUrl: versionsTable.officialMixUrl })
+    .from(versionsTable)
+    .where(eq(versionsTable.id, song.currentVersionId));
+  if (!baseVersion?.officialMixUrl) {
+    res.status(400).json({ error: "Current version is missing an official mix file." });
+    return;
+  }
+
+  try {
+    const { buffer, sizeBytes } = await mixLayeredAudio({
+      baseObjectPath: baseVersion.officialMixUrl,
+      commitObjectPaths: commits.map((c) => c.audioFileUrl),
+    });
+    const objectPath = await uploadAutoMix(b.songId, buffer);
+    res.json({ objectPath, sizeBytes });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Auto-mix failed";
+    if (err instanceof AudioMixError) {
+      // Soft failure: fall back to manual upload. Log so we can see how
+      // often the auto path breaks in production.
+      req.log.warn({ err, songId: b.songId, commitIds: b.mergedCommitIds }, "auto-mix failed");
+      res.status(502).json({ error: `Auto-mix failed: ${message}` });
+    } else {
+      req.log.error({ err }, "auto-mix unexpected error");
+      res.status(500).json({ error: "Failed to generate auto-mix" });
+    }
+  }
 });
 
 router.post("/versions", async (req: Request, res: Response) => {

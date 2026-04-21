@@ -257,6 +257,7 @@ router.post("/commits/submit", requireAuth, async (req: Request, res: Response) 
       instrumentType: body.instrumentType,
       kind: round.kind,
       audioFileUrl: body.audioObjectPath,
+      overlayOffsetSeconds: body.overlayOffsetSeconds ?? 0,
       status: "pending",
       confirmedHumanMade: true,
       confirmedRightsGrant: true,

@@ -630,6 +630,35 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/VersionWithMerges" }
 
+  /admin/versions/preview-mix:
+    post:
+      operationId: adminPreviewVersionMix
+      tags: [admin]
+      summary: Auto-mix a song's current version with selected commit stems
+      description: |
+        Layers the song's current official mix together with each selected
+        commit's audio into a single mp3, uploads it to object storage, and
+        returns the entity path. The returned `objectPath` can be used as
+        `officialMixObjectPath` when publishing a new version. Curators can
+        load the result in an `<audio>` element to preview before confirming
+        the publish. On any mixing failure the endpoint responds 502 so the
+        admin UI can fall back to the existing manual upload flow.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminPreviewVersionMixBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminPreviewVersionMixResponse" }
+        "400":
+          description: Invalid request
+        "502":
+          description: Mixing failed; manual upload is still available
+
 components:
   parameters:
     SongId:
@@ -832,7 +861,7 @@ components:
 
     CommitSummary:
       type: object
-      required: [id, songId, roundId, contributorId, title, instrumentType, kind, audioFileUrl, status, voteCount, createdAt, contributor, roundNumber, songTitle, songSlug]
+      required: [id, songId, roundId, contributorId, title, instrumentType, kind, audioFileUrl, overlayOffsetSeconds, status, voteCount, createdAt, contributor, roundNumber, songTitle, songSlug]
       properties:
         id: { type: string, format: uuid }
         songId: { type: string, format: uuid }
@@ -848,6 +877,9 @@ components:
         previewMixUrl:
           type: string
           nullable: true
+        overlayOffsetSeconds:
+          type: number
+          format: float
         baseAudioUrl:
           type: string
           nullable: true
@@ -1051,6 +1083,10 @@ components:
         note: { type: string, maxLength: 500 }
         instrumentType: { type: string }
         audioObjectPath: { type: string }
+        overlayOffsetSeconds:
+          type: number
+          format: float
+          minimum: 0
         displayNameOverride: { type: string }
         socialHandle: { type: string }
         confirmedHumanMade: { type: boolean }
@@ -1080,6 +1116,23 @@ components:
         mergedCommitIds:
           type: array
           items: { type: string, format: uuid }
+
+    AdminPreviewVersionMixBody:
+      type: object
+      required: [songId, mergedCommitIds]
+      properties:
+        songId: { type: string, format: uuid }
+        mergedCommitIds:
+          type: array
+          minItems: 1
+          items: { type: string, format: uuid }
+
+    AdminPreviewVersionMixResponse:
+      type: object
+      required: [objectPath, sizeBytes]
+      properties:
+        objectPath: { type: string }
+        sizeBytes: { type: integer }
 
     RequestUploadUrlBody:
       type: object

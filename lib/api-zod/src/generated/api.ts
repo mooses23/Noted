@@ -532,6 +532,7 @@ export const ListCommitsForRoundResponseItem = zod.object({
   kind: zod.enum(["structure", "accent"]),
   audioFileUrl: zod.string(),
   previewMixUrl: zod.string().nullish(),
+  overlayOffsetSeconds: zod.number(),
   baseAudioUrl: zod.string().nullish(),
   status: zod.enum(["pending", "shortlisted", "merged", "rejected"]),
   voteCount: zod.number(),
@@ -575,6 +576,7 @@ export const ListCommitsResponseItem = zod.object({
   kind: zod.enum(["structure", "accent"]),
   audioFileUrl: zod.string(),
   previewMixUrl: zod.string().nullish(),
+  overlayOffsetSeconds: zod.number(),
   baseAudioUrl: zod.string().nullish(),
   status: zod.enum(["pending", "shortlisted", "merged", "rejected"]),
   voteCount: zod.number(),
@@ -615,6 +617,7 @@ export const ListRisingCommitsResponseItem = zod.object({
   kind: zod.enum(["structure", "accent"]),
   audioFileUrl: zod.string(),
   previewMixUrl: zod.string().nullish(),
+  overlayOffsetSeconds: zod.number(),
   baseAudioUrl: zod.string().nullish(),
   status: zod.enum(["pending", "shortlisted", "merged", "rejected"]),
   voteCount: zod.number(),
@@ -652,6 +655,7 @@ export const GetCommitResponse = zod
     kind: zod.enum(["structure", "accent"]),
     audioFileUrl: zod.string(),
     previewMixUrl: zod.string().nullish(),
+    overlayOffsetSeconds: zod.number(),
     baseAudioUrl: zod.string().nullish(),
     status: zod.enum(["pending", "shortlisted", "merged", "rejected"]),
     voteCount: zod.number(),
@@ -710,12 +714,18 @@ export const submitCommitBodyTitleMax = 120;
 
 export const submitCommitBodyNoteMax = 500;
 
+export const submitCommitBodyOverlayOffsetSecondsMin = 0;
+
 export const SubmitCommitBody = zod.object({
   roundId: zod.string().uuid(),
   title: zod.string().min(1).max(submitCommitBodyTitleMax),
   note: zod.string().max(submitCommitBodyNoteMax).optional(),
   instrumentType: zod.string(),
   audioObjectPath: zod.string(),
+  overlayOffsetSeconds: zod
+    .number()
+    .min(submitCommitBodyOverlayOffsetSecondsMin)
+    .optional(),
   displayNameOverride: zod.string().optional(),
   socialHandle: zod.string().optional(),
   confirmedHumanMade: zod.boolean(),
@@ -734,6 +744,7 @@ export const SubmitCommitResponse = zod
     kind: zod.enum(["structure", "accent"]),
     audioFileUrl: zod.string(),
     previewMixUrl: zod.string().nullish(),
+    overlayOffsetSeconds: zod.number(),
     baseAudioUrl: zod.string().nullish(),
     status: zod.enum(["pending", "shortlisted", "merged", "rejected"]),
     voteCount: zod.number(),
@@ -1122,6 +1133,7 @@ export const AdminListCommitsResponseItem = zod.object({
   kind: zod.enum(["structure", "accent"]),
   audioFileUrl: zod.string(),
   previewMixUrl: zod.string().nullish(),
+  overlayOffsetSeconds: zod.number(),
   baseAudioUrl: zod.string().nullish(),
   status: zod.enum(["pending", "shortlisted", "merged", "rejected"]),
   voteCount: zod.number(),
@@ -1161,6 +1173,7 @@ export const AdminSetCommitStatusResponse = zod
     kind: zod.enum(["structure", "accent"]),
     audioFileUrl: zod.string(),
     previewMixUrl: zod.string().nullish(),
+    overlayOffsetSeconds: zod.number(),
     baseAudioUrl: zod.string().nullish(),
     status: zod.enum(["pending", "shortlisted", "merged", "rejected"]),
     voteCount: zod.number(),
@@ -1341,3 +1354,25 @@ export const AdminCreateVersionResponse = zod
       ),
     }),
   );
+
+/**
+ * Layers the song's current official mix together with each selected
+commit's audio into a single mp3, uploads it to object storage, and
+returns the entity path. The returned `objectPath` can be used as
+`officialMixObjectPath` when publishing a new version. Curators can
+load the result in an `<audio>` element to preview before confirming
+the publish. On any mixing failure the endpoint responds 502 so the
+admin UI can fall back to the existing manual upload flow.
+
+ * @summary Auto-mix a song's current version with selected commit stems
+ */
+
+export const AdminPreviewVersionMixBody = zod.object({
+  songId: zod.string().uuid(),
+  mergedCommitIds: zod.array(zod.string().uuid()).min(1),
+});
+
+export const AdminPreviewVersionMixResponse = zod.object({
+  objectPath: zod.string(),
+  sizeBytes: zod.number(),
+});

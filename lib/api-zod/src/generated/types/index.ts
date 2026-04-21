@@ -11,6 +11,8 @@ export * from "./adminAddSongFileBodyFileType";
 export * from "./adminCreateVersionBody";
 export * from "./adminListCommitsParams";
 export * from "./adminListCommitsStatus";
+export * from "./adminPreviewVersionMixBody";
+export * from "./adminPreviewVersionMixResponse";
 export * from "./adminSetCommitStatusBody";
 export * from "./adminSetCommitStatusBodyStatus";
 export * from "./adminStats";

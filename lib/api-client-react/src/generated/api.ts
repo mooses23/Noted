@@ -20,6 +20,8 @@ import type {
   AdminAddSongFileBody,
   AdminCreateVersionBody,
   AdminListCommitsParams,
+  AdminPreviewVersionMixBody,
+  AdminPreviewVersionMixResponse,
   AdminSetCommitStatusBody,
   AdminStats,
   AdvancePhaseBody,
@@ -3098,4 +3100,102 @@ export const useAdminCreateVersion = <
   TContext
 > => {
   return useMutation(getAdminCreateVersionMutationOptions(options));
+};
+
+/**
+ * Layers the song's current official mix together with each selected
+commit's audio into a single mp3, uploads it to object storage, and
+returns the entity path. The returned `objectPath` can be used as
+`officialMixObjectPath` when publishing a new version. Curators can
+load the result in an `<audio>` element to preview before confirming
+the publish. On any mixing failure the endpoint responds 502 so the
+admin UI can fall back to the existing manual upload flow.
+
+ * @summary Auto-mix a song's current version with selected commit stems
+ */
+export const getAdminPreviewVersionMixUrl = () => {
+  return `/api/admin/versions/preview-mix`;
+};
+
+export const adminPreviewVersionMix = async (
+  adminPreviewVersionMixBody: AdminPreviewVersionMixBody,
+  options?: RequestInit,
+): Promise<AdminPreviewVersionMixResponse> => {
+  return customFetch<AdminPreviewVersionMixResponse>(
+    getAdminPreviewVersionMixUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(adminPreviewVersionMixBody),
+    },
+  );
+};
+
+export const getAdminPreviewVersionMixMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminPreviewVersionMix>>,
+    TError,
+    { data: BodyType<AdminPreviewVersionMixBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminPreviewVersionMix>>,
+  TError,
+  { data: BodyType<AdminPreviewVersionMixBody> },
+  TContext
+> => {
+  const mutationKey = ["adminPreviewVersionMix"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminPreviewVersionMix>>,
+    { data: BodyType<AdminPreviewVersionMixBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return adminPreviewVersionMix(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminPreviewVersionMixMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminPreviewVersionMix>>
+>;
+export type AdminPreviewVersionMixMutationBody =
+  BodyType<AdminPreviewVersionMixBody>;
+export type AdminPreviewVersionMixMutationError = ErrorType<void>;
+
+/**
+ * @summary Auto-mix a song's current version with selected commit stems
+ */
+export const useAdminPreviewVersionMix = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminPreviewVersionMix>>,
+    TError,
+    { data: BodyType<AdminPreviewVersionMixBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminPreviewVersionMix>>,
+  TError,
+  { data: BodyType<AdminPreviewVersionMixBody> },
+  TContext
+> => {
+  return useMutation(getAdminPreviewVersionMixMutationOptions(options));
 };

@@ -4,6 +4,7 @@ import {
   timestamp,
   uuid,
   integer,
+  real,
   boolean,
   pgEnum,
   uniqueIndex,
@@ -167,6 +168,7 @@ export const commitsTable = pgTable(
     kind: roundKindEnum("kind").notNull().default("structure"),
     audioFileUrl: text("audio_file_url").notNull(),
     previewMixUrl: text("preview_mix_url"),
+    overlayOffsetSeconds: real("overlay_offset_seconds").notNull().default(0),
     status: commitStatusEnum("status").notNull().default("pending"),
     confirmedHumanMade: boolean("confirmed_human_made").notNull().default(false),
     confirmedRightsGrant: boolean("confirmed_rights_grant")

@@ -210,6 +210,7 @@ export interface CommitSummary {
   kind: CommitSummaryKind;
   audioFileUrl: string;
   previewMixUrl?: string | null;
+  overlayOffsetSeconds: number;
   baseAudioUrl?: string | null;
   status: CommitSummaryStatus;
   voteCount: number;
@@ -408,6 +409,8 @@ export interface SubmitCommitBody {
   note?: string;
   instrumentType: string;
   audioObjectPath: string;
+  /** @minimum 0 */
+  overlayOffsetSeconds?: number;
   displayNameOverride?: string;
   socialHandle?: string;
   confirmedHumanMade: boolean;
@@ -441,6 +444,17 @@ export interface AdminCreateVersionBody {
   mergeNote?: string;
   officialMixObjectPath: string;
   mergedCommitIds: string[];
+}
+
+export interface AdminPreviewVersionMixBody {
+  songId: string;
+  /** @minItems 1 */
+  mergedCommitIds: string[];
+}
+
+export interface AdminPreviewVersionMixResponse {
+  objectPath: string;
+  sizeBytes: number;
 }
 
 export type RequestUploadUrlBodyPurpose =

@@ -20,6 +20,7 @@ export interface CommitSummary {
   kind: CommitSummaryKind;
   audioFileUrl: string;
   previewMixUrl?: string | null;
+  overlayOffsetSeconds: number;
   baseAudioUrl?: string | null;
   status: CommitSummaryStatus;
   voteCount: number;
