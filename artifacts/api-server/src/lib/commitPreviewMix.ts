@@ -22,8 +22,10 @@ export async function generateAndStoreCommitPreviewMix(args: {
   roundId: string;
   audioFileUrl: string;
   overlayOffsetSeconds?: number;
+  /** Tighter watchdog so a slow mix can't blow a serverless request budget. */
+  timeoutMs?: number;
 }): Promise<string | null> {
-  const { commitId, songId, roundId, audioFileUrl, overlayOffsetSeconds } = args;
+  const { commitId, songId, roundId, audioFileUrl, overlayOffsetSeconds, timeoutMs } = args;
 
   const [round] = await db
     .select({ baseVersionId: roundsTable.baseVersionId })
@@ -56,6 +58,7 @@ export async function generateAndStoreCommitPreviewMix(args: {
       baseObjectPath: base.officialMixUrl,
       commitObjectPaths: [audioFileUrl],
       commitOffsetsSeconds: [overlayOffsetSeconds ?? 0],
+      timeoutMs,
     });
     const objectPath = await uploadCommitPreviewMix(songId, commitId, buffer);
     await db

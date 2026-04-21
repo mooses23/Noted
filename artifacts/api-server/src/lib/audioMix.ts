@@ -8,7 +8,7 @@ import { ObjectStorageService, objectStorageClient } from "./objectStorage";
 const objectStorage = new ObjectStorageService();
 
 const FFMPEG_BIN = process.env.FFMPEG_PATH || "ffmpeg";
-const FFMPEG_TIMEOUT_MS = 90_000;
+const DEFAULT_FFMPEG_TIMEOUT_MS = 90_000;
 const MAX_INPUTS = 8;
 
 export class AudioMixError extends Error {
@@ -29,7 +29,7 @@ async function downloadObjectToFile(
   await writeFile(dest, buf);
 }
 
-function runFfmpeg(args: string[]): Promise<void> {
+function runFfmpeg(args: string[], timeoutMs: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const proc = spawn(FFMPEG_BIN, args, {
       stdio: ["ignore", "ignore", "pipe"],
@@ -37,8 +37,8 @@ function runFfmpeg(args: string[]): Promise<void> {
     let stderrTail = "";
     const timer = setTimeout(() => {
       proc.kill("SIGKILL");
-      reject(new AudioMixError(`ffmpeg timed out after ${FFMPEG_TIMEOUT_MS}ms`));
-    }, FFMPEG_TIMEOUT_MS);
+      reject(new AudioMixError(`ffmpeg timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
     proc.stderr.on("data", (chunk: Buffer) => {
       stderrTail += chunk.toString("utf8");
       if (stderrTail.length > 8192) stderrTail = stderrTail.slice(-8192);
@@ -82,8 +82,11 @@ export async function mixLayeredAudio(opts: {
    * (commits start at the same instant as the base).
    */
   commitOffsetsSeconds?: number[];
+  /** Override the default ffmpeg watchdog timeout (90s). */
+  timeoutMs?: number;
 }): Promise<{ buffer: Buffer; mimeType: string; sizeBytes: number }> {
   const { baseObjectPath, commitObjectPaths, commitOffsetsSeconds } = opts;
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_FFMPEG_TIMEOUT_MS;
   if (commitObjectPaths.length === 0) {
     throw new AudioMixError("At least one commit is required to mix.");
   }
@@ -154,7 +157,7 @@ export async function mixLayeredAudio(opts: {
       out,
     );
 
-    await runFfmpeg(args);
+    await runFfmpeg(args, timeoutMs);
 
     const buffer = await readFile(out);
     if (buffer.length === 0) {
