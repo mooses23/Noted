@@ -42,6 +42,21 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/CurrentUser" }
+    patch:
+      operationId: updateMe
+      tags: [profiles]
+      summary: Update the current user's preferences (e.g. email digest opt-out)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateMeBody" }
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Profile" }
 
   /me/notifications:
     get:
@@ -905,7 +920,7 @@ components:
 
     Profile:
       type: object
-      required: [id, displayName, isAdmin, createdAt]
+      required: [id, displayName, isAdmin, unreadDigestOptOut, createdAt]
       properties:
         id: { type: string, format: uuid }
         displayName: { type: string }
@@ -922,7 +937,13 @@ components:
           type: string
           nullable: true
         isAdmin: { type: boolean }
+        unreadDigestOptOut: { type: boolean }
         createdAt: { type: string, format: date-time }
+
+    UpdateMeBody:
+      type: object
+      properties:
+        unreadDigestOptOut: { type: boolean }
 
     Song:
       type: object

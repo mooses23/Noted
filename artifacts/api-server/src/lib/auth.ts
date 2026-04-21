@@ -40,6 +40,9 @@ export async function getSessionProfile(req: Request): Promise<Profile | null> {
 
   const isAdmin = clerkUser ? resolveIsAdmin(clerkUser) : false;
 
+  const primaryEmail =
+    clerkUser?.emailAddresses?.[0]?.emailAddress?.toLowerCase() ?? null;
+
   const existing = await db
     .select()
     .from(profilesTable)
@@ -47,11 +50,20 @@ export async function getSessionProfile(req: Request): Promise<Profile | null> {
     .limit(1);
   if (existing.length > 0) {
     const profile = existing[0]!;
-    // Re-sync admin flag so Clerk metadata / email allowlist remain authoritative.
-    if (profile.isAdmin !== isAdmin) {
+    // Re-sync admin flag so Clerk metadata / email allowlist remain authoritative,
+    // and cache the user's primary email so the digest worker can address them
+    // without hitting Clerk for every send.
+    const needsAdminSync = profile.isAdmin !== isAdmin;
+    const needsEmailSync =
+      primaryEmail !== null && profile.email !== primaryEmail;
+    if (needsAdminSync || needsEmailSync) {
       const [updated] = await db
         .update(profilesTable)
-        .set({ isAdmin, updatedAt: new Date() })
+        .set({
+          ...(needsAdminSync ? { isAdmin } : {}),
+          ...(needsEmailSync ? { email: primaryEmail } : {}),
+          updatedAt: new Date(),
+        })
         .where(eq(profilesTable.id, profile.id))
         .returning();
       return updated ?? profile;
@@ -77,7 +89,14 @@ export async function getSessionProfile(req: Request): Promise<Profile | null> {
 
   const [created] = await db
     .insert(profilesTable)
-    .values({ clerkId, displayName, username, avatarUrl, isAdmin })
+    .values({
+      clerkId,
+      displayName,
+      username,
+      avatarUrl,
+      isAdmin,
+      email: primaryEmail,
+    })
     .returning();
   return created!;
 }

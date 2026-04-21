@@ -3,11 +3,13 @@ import {
   useListMyDrafts,
   useSubmitDraft,
   useDeleteDraft,
+  useUpdateMe,
   getListMyDraftsQueryKey,
+  getGetCurrentUserQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { Disc3, FileAudio, Pencil, Send, Trash2 } from "lucide-react";
+import { Disc3, FileAudio, Mail, Pencil, Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -19,6 +21,7 @@ export default function Profile() {
   });
   const submitDraft = useSubmitDraft();
   const deleteDraft = useDeleteDraft();
+  const updateMe = useUpdateMe();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -216,6 +219,54 @@ export default function Profile() {
             instrument.
           </p>
         )}
+      </section>
+
+      <section className="mb-12 border-t border-border pt-8">
+        <h2 className="text-xl font-serif font-bold mb-4">Email preferences</h2>
+        <label className="flex items-start gap-3 cursor-pointer group">
+          <input
+            type="checkbox"
+            className="mt-1 h-4 w-4 accent-primary"
+            checked={!p.unreadDigestOptOut}
+            disabled={updateMe.isPending}
+            data-testid="checkbox-unread-digest"
+            onChange={(e) => {
+              const optOut = !e.target.checked;
+              updateMe.mutate(
+                { data: { unreadDigestOptOut: optOut } },
+                {
+                  onSuccess: () => {
+                    queryClient.invalidateQueries({
+                      queryKey: getGetCurrentUserQueryKey(),
+                    });
+                    toast({
+                      title: optOut
+                        ? "Digest emails turned off"
+                        : "Digest emails turned on",
+                    });
+                  },
+                  onError: (err) => {
+                    toast({
+                      title: "Couldn't update preferences",
+                      description: err.message,
+                      variant: "destructive",
+                    });
+                  },
+                },
+              );
+            }}
+          />
+          <div className="text-sm">
+            <div className="font-bold flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              Email me a digest of unread notifications
+            </div>
+            <div className="text-muted-foreground mt-1">
+              When you have unread items in your bell, we'll send a single
+              recap email so you don't miss votes, merges, or curator notes.
+            </div>
+          </div>
+        </label>
       </section>
 
       <p className="text-sm text-muted-foreground">

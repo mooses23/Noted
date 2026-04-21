@@ -24,6 +24,14 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
+## Email digest
+
+The unread-notifications digest job lives at `POST /internal/digest/run`.
+- Auth: requires `x-cron-secret` header matching `CRON_SECRET` env var.
+- Sender: `lib/email.ts` posts to Resend's REST API when `RESEND_API_KEY` is set; otherwise it logs the email and still advances the watermark so dev runs converge.
+- Per-user opt-out lives on `profiles.unread_digest_opt_out`; deduping uses `profiles.last_digest_emailed_at`.
+- The Resend Replit connector was offered to the user and dismissed — set `RESEND_API_KEY` and `DIGEST_FROM_EMAIL` directly as secrets when ready to go live.
+
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
 
 ## Product: Noted
