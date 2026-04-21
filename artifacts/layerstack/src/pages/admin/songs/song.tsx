@@ -1016,8 +1016,8 @@ function CreditsPanel({ songId, songSlug }: { songId: string; songSlug: string }
       <div>
         <h2 className="text-2xl font-serif font-bold mb-2">Music Credits</h2>
         <p className="text-sm text-muted-foreground">
-          Third-party assets used in this song. These appear on the public song page and on the
-          Licenses page. Add one entry per attributed track or asset.
+          Third-party assets used in this song. These appear in the Music Credits
+          section on the public song page. Add one entry per attributed track or asset.
         </p>
       </div>
 
