@@ -1,5 +1,5 @@
 import { useParams, Link } from "wouter";
-import { useGetSongBySlug, useListCommitsForRound, getGetSongBySlugQueryKey, getListCommitsForRoundQueryKey, ListCommitsForRoundSort, useVoteOnCommit, useUnvoteCommit, useGetCurrentUser } from "@workspace/api-client-react";
+import { useGetSongBySlug, useListCommitsForRound, getGetSongBySlugQueryKey, getListCommitsForRoundQueryKey, ListCommitsForRoundSort, useVoteOnCommit, useUnvoteCommit, useGetCurrentUser, useListVersionsForSong, getListVersionsForSongQueryKey } from "@workspace/api-client-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { CommitAudioComparator } from "@/components/CommitAudioComparator";
 import { Button } from "@/components/ui/button";
@@ -149,6 +149,9 @@ export default function SongDetail() {
             </section>
           )}
 
+          {/* Version Story — full lifecycle history */}
+          <VersionStory songId={song.id} />
+
           {/* Open Commits for Current Round */}
           {song.currentRound && (
             <section>
@@ -260,6 +263,85 @@ export default function SongDetail() {
         </div>
       </div>
     </div>
+  );
+}
+
+function VersionStory({ songId }: { songId: string }) {
+  const { data: versions, isLoading } = useListVersionsForSong(songId, {
+    query: { enabled: !!songId, queryKey: getListVersionsForSongQueryKey(songId) },
+  });
+
+  if (isLoading) {
+    return <div className="h-32 bg-card border border-border animate-pulse mb-12" />;
+  }
+  if (!versions || versions.length === 0) return null;
+
+  return (
+    <section className="mb-12">
+      <h2 className="text-2xl font-serif font-bold mb-6">Version Story</h2>
+      <div className="border-l-2 border-border pl-6 space-y-8">
+        {versions.map((v) => {
+          const accentMerges = v.merges.filter((m) => m.commitKind === "accent");
+          const structureMerges = v.merges.filter((m) => m.commitKind !== "accent");
+          return (
+            <div key={v.id} className="relative">
+              <div className="absolute -left-[31px] top-1.5 w-4 h-4 bg-background border-2 border-primary" />
+              <div className="flex items-center gap-3 flex-wrap mb-2">
+                <span className="font-serif text-xl font-bold">{v.title}</span>
+                {v.isCurrent && (
+                  <span className="text-[0.65rem] uppercase tracking-widest px-2 py-0.5 bg-primary text-primary-foreground">
+                    Current
+                  </span>
+                )}
+              </div>
+              {v.description && (
+                <p className="text-sm text-muted-foreground mb-3">{v.description}</p>
+              )}
+              {v.merges.length === 0 ? (
+                <div className="text-xs text-muted-foreground italic">Seed version — no merged contributions yet.</div>
+              ) : (
+                <div className="space-y-2">
+                  {structureMerges.length > 0 && (
+                    <div>
+                      <div className="text-[0.65rem] uppercase tracking-widest text-foreground/60 mb-1">
+                        Structure
+                      </div>
+                      <ul className="space-y-1">
+                        {structureMerges.map((m) => (
+                          <li key={m.id} className="text-sm flex items-center gap-2 flex-wrap">
+                            <span className="font-bold">{m.commitTitle}</span>
+                            <span className="text-muted-foreground">
+                              · {m.instrumentType} · {m.contributor.displayName}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {accentMerges.length > 0 && (
+                    <div>
+                      <div className="text-[0.65rem] uppercase tracking-widest text-primary mb-1">
+                        Accents ({accentMerges.length})
+                      </div>
+                      <ul className="space-y-1">
+                        {accentMerges.map((m) => (
+                          <li key={m.id} className="text-sm flex items-center gap-2 flex-wrap">
+                            <span className="font-bold">{m.commitTitle}</span>
+                            <span className="text-muted-foreground">
+                              · {m.contributor.displayName}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

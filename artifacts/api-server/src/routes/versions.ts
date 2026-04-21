@@ -44,6 +44,7 @@ async function versionsWithMergesForSong(songId: string) {
           mergeNote: m.merge.mergeNote ?? null,
           commitTitle: m.commit.title,
           instrumentType: m.commit.instrumentType,
+          commitKind: m.commit.kind ?? "structure",
           contributor: toContributor(m.contributor),
           createdAt: m.merge.createdAt.toISOString(),
         })),
