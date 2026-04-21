@@ -192,9 +192,16 @@ export default function SubmitCommit() {
         source: audioFile,
         offsetSeconds: overlayOffset,
       });
+    } else if (isEditing && editingDraft && objectPath) {
+      layers.push({
+        id: "overlay",
+        label: form.watch("title") || editingDraft.title,
+        source: editingDraft.audioFileUrl,
+        offsetSeconds: overlayOffset,
+      });
     }
     return layers;
-  }, [baseLayer, audioFile, overlayOffset, form.watch("title")]);
+  }, [baseLayer, audioFile, overlayOffset, form.watch("title"), isEditing, editingDraft, objectPath]);
 
   if (isSongLoading || isUserLoading || (isEditing && draftsLoading))
     return (
@@ -527,7 +534,7 @@ export default function SubmitCommit() {
         </Section>
 
         {/* Step 3 — Stack & align */}
-        {audioFile && (
+        {(audioFile || (isEditing && objectPath)) && (
           <Section number={3} title="Stack & align">
             <p className="text-xs text-muted-foreground mb-3">
               Preview your Note over the base. Drag the start offset until they
