@@ -152,6 +152,20 @@ paths:
                 type: array
                 items: { $ref: "#/components/schemas/VersionWithMerges" }
 
+  /credits:
+    get:
+      operationId: listAllCredits
+      tags: [songs]
+      summary: All third-party credits across every song (for the global /licenses page)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SongCreditWithSong" }
+
   /songs/{songId}/credits:
     get:
       operationId: listCredits
@@ -738,6 +752,22 @@ components:
           nullable: true
         sortOrder: { type: integer }
         createdAt: { type: string, format: date-time }
+
+    SongRef:
+      type: object
+      required: [id, slug, title]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        title: { type: string }
+
+    SongCreditWithSong:
+      allOf:
+        - $ref: "#/components/schemas/SongCredit"
+        - type: object
+          required: [song]
+          properties:
+            song: { $ref: "#/components/schemas/SongRef" }
 
     FeaturedSong:
       type: object

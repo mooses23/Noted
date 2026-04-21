@@ -422,6 +422,33 @@ export const ListVersionsForSongResponse = zod.array(
   ListVersionsForSongResponseItem,
 );
 
+/**
+ * @summary All third-party credits across every song (for the global /licenses page)
+ */
+export const ListAllCreditsResponseItem = zod
+  .object({
+    id: zod.string().uuid(),
+    songId: zod.string().uuid(),
+    title: zod.string(),
+    author: zod.string(),
+    sourceUrl: zod.string(),
+    licenseName: zod.string(),
+    licenseUrl: zod.string(),
+    role: zod.string().nullish(),
+    sortOrder: zod.number(),
+    createdAt: zod.coerce.date(),
+  })
+  .and(
+    zod.object({
+      song: zod.object({
+        id: zod.string().uuid(),
+        slug: zod.string(),
+        title: zod.string(),
+      }),
+    }),
+  );
+export const ListAllCreditsResponse = zod.array(ListAllCreditsResponseItem);
+
 export const ListCreditsParams = zod.object({
   songId: zod.coerce.string().uuid(),
 });

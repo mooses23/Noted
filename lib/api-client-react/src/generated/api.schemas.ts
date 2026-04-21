@@ -132,6 +132,16 @@ export type SongDetail = Song & {
   versionCount: number;
 };
 
+export interface SongRef {
+  id: string;
+  slug: string;
+  title: string;
+}
+
+export type SongCreditWithSong = SongCredit & {
+  song: SongRef;
+};
+
 export interface FeaturedSong {
   song: SongDetail | null;
 }
