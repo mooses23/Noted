@@ -389,10 +389,23 @@ function PublishVersionPanel({
   const publish = useAdminCreateVersion();
   const previewMix = useAdminPreviewVersionMix();
   const [autoMixed, setAutoMixed] = useState(false);
+  // Snapshot of the selected commit IDs at the moment we ran auto-mix.
+  // If `selected` diverges from this, the preview is stale.
+  const [autoMixSignature, setAutoMixSignature] = useState<string | null>(null);
+  const currentSelectionSignature = Object.entries(selected)
+    .filter(([, v]) => v)
+    .map(([k]) => k)
+    .sort()
+    .join(",");
+  const mixStale =
+    autoMixed &&
+    autoMixSignature !== null &&
+    autoMixSignature !== currentSelectionSignature;
   const { uploadFile, isUploading, progress } = useUpload({
     onSuccess: (r) => {
       setOfficialMixPath(r.objectPath);
       setAutoMixed(false);
+      setAutoMixSignature(null);
       toast({ title: "Official mix uploaded" });
     },
     onError: (err) =>
@@ -426,6 +439,7 @@ function PublishVersionPanel({
         onSuccess: (r) => {
           setOfficialMixPath(r.objectPath);
           setAutoMixed(true);
+          setAutoMixSignature(mergedCommitIds.slice().sort().join(","));
           toast({
             title: "Auto-mix ready",
             description: "Preview it below before publishing.",
@@ -453,6 +467,19 @@ function PublishVersionPanel({
         title: "Missing info",
         description:
           "Title, uploaded official mix, and at least one commit are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (
+      autoMixed &&
+      autoMixSignature !== null &&
+      autoMixSignature !== mergedCommitIds.slice().sort().join(",")
+    ) {
+      toast({
+        title: "Auto-mix is out of date",
+        description:
+          "You changed the merged-commit selection after generating the auto-mix. Re-run Auto-mix selected, or upload a mastered mix.",
         variant: "destructive",
       });
       return;
@@ -492,6 +519,7 @@ function PublishVersionPanel({
           setMergeNote("");
           setOfficialMixPath("");
           setAutoMixed(false);
+          setAutoMixSignature(null);
           setSelected({});
           queryClient.invalidateQueries({
             queryKey: getGetSongQueryKey(songId),
@@ -566,12 +594,18 @@ function PublishVersionPanel({
           >
             {previewMix.isPending ? "Mixing…" : "Auto-mix selected"}
           </Button>
-          <span className="text-xs text-muted-foreground">
+          <span
+            className={`text-xs ${
+              mixStale ? "text-destructive" : "text-muted-foreground"
+            }`}
+          >
             {isUploading
               ? `Uploading ${progress}%`
               : officialMixPath
                 ? autoMixed
-                  ? "Auto-mix ready ✓"
+                  ? mixStale
+                    ? "Auto-mix is stale ⚠"
+                    : "Auto-mix ready ✓"
                   : "Uploaded ✓"
                 : ""}
           </span>
@@ -580,13 +614,32 @@ function PublishVersionPanel({
           Auto-mix layers the song's current official mix with each selected
           commit. If it fails, the mastered upload above still works.
         </p>
+        {mixStale && (
+          <div className="mt-3 border border-destructive bg-destructive/10 text-destructive text-sm p-3 flex items-start justify-between gap-3">
+            <div>
+              You changed the merged-commit selection after generating this
+              auto-mix, so the preview below no longer matches what would be
+              published. Re-run Auto-mix selected, or upload a mastered mix.
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-none whitespace-nowrap border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              onClick={handleAutoMix}
+              disabled={previewMix.isPending}
+            >
+              {previewMix.isPending ? "Mixing…" : "Re-run auto-mix"}
+            </Button>
+          </div>
+        )}
         {officialMixPath && (
           <audio
             key={officialMixPath}
             controls
             preload="metadata"
             src={`/api/storage${officialMixPath}`}
-            className="mt-3 w-full"
+            className={`mt-3 w-full ${mixStale ? "opacity-60" : ""}`}
           />
         )}
       </div>
@@ -628,8 +681,13 @@ function PublishVersionPanel({
 
       <Button
         onClick={submit}
-        disabled={publish.isPending || isUploading}
+        disabled={publish.isPending || isUploading || mixStale}
         className="rounded-none uppercase tracking-widest text-xs"
+        title={
+          mixStale
+            ? "Re-run auto-mix or upload a mastered mix before publishing"
+            : undefined
+        }
       >
         <Check className="w-4 h-4 mr-2" />
         {publish.isPending ? "Publishing…" : "Publish Version"}
