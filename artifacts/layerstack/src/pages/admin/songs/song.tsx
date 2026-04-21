@@ -7,6 +7,8 @@ import {
   useAdminUpdateSong,
   useAdminCreateRound,
   useAdminUpdateRound,
+  useListVersionsForSong,
+  getListVersionsForSongQueryKey,
   useAdminAdvanceSongPhase,
   useAdminAddSongFile,
   useAdminSetCommitStatus,
@@ -720,11 +722,24 @@ function RoundsPanel({
   const [kind, setKind] = useState<CreateRoundBodyKind>(defaultKind);
   const [mergeBehavior, setMergeBehavior] =
     useState<CreateRoundBodyMergeBehavior>(defaultMerge);
+  // Empty string means "default to song's current version" on create.
+  const [baseVersionId, setBaseVersionId] = useState<string>("");
   // If the song's phase changes (after Advance/Revert) auto-realign defaults.
   useEffect(() => {
     setKind(defaultKind);
     setMergeBehavior(defaultMerge);
   }, [songPhase]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { data: versions } = useListVersionsForSong(songId, {
+    query: {
+      enabled: !!songId,
+      queryKey: getListVersionsForSongQueryKey(songId),
+    },
+  });
+  const versionLabel = (id: string | null | undefined) => {
+    if (!id) return "None";
+    const v = versions?.find((x) => x.id === id);
+    return v ? `v${v.versionNumber} — ${v.title}` : "Unknown version";
+  };
   const create = useAdminCreateRound();
   const update = useAdminUpdateRound();
 
@@ -756,12 +771,14 @@ function RoundsPanel({
           kind,
           mergeBehavior,
           status: "open",
+          ...(baseVersionId ? { baseVersionId } : {}),
         },
       },
       {
         onSuccess: () => {
           toast({ title: "Round created" });
           setTitle("");
+          setBaseVersionId("");
           invalidate();
         },
       },
@@ -776,6 +793,27 @@ function RoundsPanel({
           toast({ title: `Round ${status}` });
           invalidate();
         },
+      },
+    );
+  };
+
+  const setBaseVersion = (roundId: string, value: string) => {
+    update.mutate(
+      {
+        roundId,
+        data: { baseVersionId: value === "__none__" ? null : value },
+      },
+      {
+        onSuccess: () => {
+          toast({ title: "Base version updated" });
+          invalidate();
+        },
+        onError: (err) =>
+          toast({
+            title: "Failed",
+            description: String(err),
+            variant: "destructive",
+          }),
       },
     );
   };
@@ -835,6 +873,31 @@ function RoundsPanel({
               </SelectContent>
             </Select>
           </div>
+          <div className="md:col-span-2">
+            <Label className="text-xs uppercase tracking-widest text-muted-foreground">
+              Base version (drives the "Original" player on commit cards)
+            </Label>
+            <Select
+              value={baseVersionId || "__default__"}
+              onValueChange={(v) =>
+                setBaseVersionId(v === "__default__" ? "" : v)
+              }
+            >
+              <SelectTrigger className="rounded-none">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__default__">
+                  Default to song's current version
+                </SelectItem>
+                {(versions ?? []).map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    v{v.versionNumber} — {v.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <Button
             onClick={submit}
             disabled={create.isPending}
@@ -852,9 +915,9 @@ function RoundsPanel({
             {rounds.map((round) => (
               <div
                 key={round.id}
-                className="p-4 flex items-center justify-between"
+                className="p-4 flex items-center justify-between gap-4 flex-wrap"
               >
-                <div>
+                <div className="min-w-0">
                   <div className="font-bold">
                     Round {round.roundNumber}: {round.title}
                   </div>
@@ -864,8 +927,30 @@ function RoundsPanel({
                     • Wanted: {round.allowedInstrumentType} • Status:{" "}
                     <span className="uppercase">{round.status}</span>
                   </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Layered against: {versionLabel(round.baseVersionId)}
+                  </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center flex-wrap">
+                  <div className="min-w-[220px]">
+                    <Select
+                      value={round.baseVersionId ?? "__none__"}
+                      onValueChange={(v) => setBaseVersion(round.id, v)}
+                      disabled={update.isPending}
+                    >
+                      <SelectTrigger className="rounded-none h-9 text-xs">
+                        <SelectValue placeholder="Base version" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">No base version</SelectItem>
+                        {(versions ?? []).map((v) => (
+                          <SelectItem key={v.id} value={v.id}>
+                            v{v.versionNumber} — {v.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   {round.status !== "open" && (
                     <Button
                       variant="outline"

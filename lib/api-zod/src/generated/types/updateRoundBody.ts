@@ -18,4 +18,6 @@ export interface UpdateRoundBody {
   status?: UpdateRoundBodyStatus;
   opensAt?: Date;
   closesAt?: Date;
+  /** Version this round is layered against. Pass null to clear. */
+  baseVersionId?: string | null;
 }

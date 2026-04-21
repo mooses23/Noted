@@ -117,6 +117,7 @@ export interface Round {
   status: RoundStatus;
   opensAt?: string | null;
   closesAt?: string | null;
+  baseVersionId?: string | null;
   createdAt: string;
   updatedAt?: string;
   commitCount?: number | null;
@@ -396,6 +397,8 @@ export interface CreateRoundBody {
   status?: CreateRoundBodyStatus;
   opensAt?: string;
   closesAt?: string;
+  /** Version this round is layered against. Defaults to the song's current version when omitted. */
+  baseVersionId?: string | null;
 }
 
 export interface SubmitCommitBody {
@@ -662,6 +665,8 @@ export interface UpdateRoundBody {
   status?: UpdateRoundBodyStatus;
   opensAt?: string;
   closesAt?: string;
+  /** Version this round is layered against. Pass null to clear. */
+  baseVersionId?: string | null;
 }
 
 export type AdvancePhaseBodyPhase =

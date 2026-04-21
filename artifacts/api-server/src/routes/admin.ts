@@ -219,7 +219,10 @@ router.post("/rounds", async (req: Request, res: Response) => {
       status: b.status ?? "open",
       opensAt: b.opensAt ? new Date(b.opensAt) : new Date(),
       closesAt: b.closesAt ? new Date(b.closesAt) : null,
-      baseVersionId: song?.currentVersionId ?? null,
+      baseVersionId:
+        b.baseVersionId !== undefined
+          ? b.baseVersionId
+          : (song?.currentVersionId ?? null),
     })
     .returning();
   if (created && created.status === "open") {
@@ -289,6 +292,7 @@ router.patch("/rounds/:roundId", async (req: Request, res: Response) => {
       ...(b.closesAt !== undefined
         ? { closesAt: b.closesAt ? new Date(b.closesAt) : null }
         : {}),
+      ...(b.baseVersionId !== undefined ? { baseVersionId: b.baseVersionId } : {}),
       updatedAt: new Date(),
     })
     .where(eq(roundsTable.id, req.params.roundId as string))
