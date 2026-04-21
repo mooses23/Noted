@@ -9,16 +9,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CoverImage } from "@/components/CoverImage";
 import { format } from "date-fns";
+import { Sparkles } from "lucide-react";
 
 export default function Home() {
   const { data: stats } = useGetPublicStats();
   const { data: songs, isLoading: isSongsLoading } = useListSongs({
     status: "active",
   });
-  const recentSongs = useMemo(() => (songs ? songs.slice(0, 3) : []), [songs]);
   const [, setLocation] = useLocation();
   const [query, setQuery] = useState("");
   const [activeGenre, setActiveGenre] = useState<string | null>(null);
+  const recentSongs = useMemo(() => {
+    if (!songs) return [];
+    const filtered = activeGenre
+      ? songs.filter((s) => s.genre === activeGenre)
+      : songs;
+    return filtered.slice(0, 3);
+  }, [songs, activeGenre]);
 
   const genres = useMemo(() => {
     if (stats?.genres?.length) {
@@ -118,6 +125,28 @@ export default function Home() {
               ))}
             </div>
           )}
+
+          {/* Marketing announcement card */}
+          <div className="mt-10 max-w-2xl w-full bg-card border border-primary/30 p-5 flex items-start gap-4 text-left">
+            <div className="w-9 h-9 flex-shrink-0 bg-primary/10 text-primary border border-primary/40 flex items-center justify-center">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase tracking-widest text-primary mb-1">
+                What&rsquo;s new
+              </div>
+              <p className="text-sm text-foreground/90 leading-snug">
+                Curators are opening accent rounds on{" "}
+                <Link
+                  href="/songs"
+                  className="text-primary hover:underline font-medium"
+                >
+                  three active songs
+                </Link>{" "}
+                this week. Drop a Note before they close.
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -282,7 +311,3 @@ function Stat({
   );
 }
 
-// Used in song search-by-genre filter (kept for completeness if revisited).
-export function _CoverPreview() {
-  return <CoverImage url={null} alt="" className="w-12 h-12" />;
-}
