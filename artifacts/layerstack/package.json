@@ -50,6 +50,7 @@
     "@vitejs/plugin-react": "catalog:",
     "@workspace/api-client-react": "workspace:*",
     "@workspace/object-storage-web": "workspace:*",
+    "@workspace/seed-content": "workspace:*",
     "@clerk/react": "^6.4.0",
     "@uppy/aws-s3": "^5.0.0",
     "@uppy/core": "^5.0.0",

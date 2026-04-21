@@ -1,4 +1,9 @@
 import { Storage } from "@google-cloud/storage";
+import {
+  DEMO_SONG_CREDITS,
+  formatCreditLine,
+  type DemoSongCredit,
+} from "@workspace/seed-content";
 
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
 
@@ -28,133 +33,109 @@ const storage = new Storage({
  *
  * Attribution is reproduced in scripts/src/lib/seed-audio-credits.md.
  */
-export type SeedAudioAsset = {
-  /** Storage key relative to PRIVATE_OBJECT_DIR (e.g. "seed/the-long-room-v1.mp3"). */
-  key: string;
+export type SeedAudioAsset = DemoSongCredit & {
   /** Public source URL. */
   sourceUrl: string;
-  /** Wikimedia Commons file page (for attribution). */
-  sourcePage: string;
   /** Content-Type to set on the uploaded object. */
   contentType: string;
-  /** Human-readable attribution line. */
+  /** Human-readable attribution line, derived from the shared credit. */
   credit: string;
   /** Approximate uncompressed size for seed metadata. */
   sizeBytes: number;
 };
 
-export const SEED_AUDIO_ASSETS: SeedAudioAsset[] = [
-  {
-    key: "seed/the-long-room-v1.mp3",
+/**
+ * Per-asset upload metadata (download URL + expected size). Credits/titles
+ * for each key are stored alongside in @workspace/seed-content so the
+ * LayerStack frontend can render the same attribution to end users.
+ */
+const SEED_AUDIO_UPLOAD_META: Record<
+  string,
+  { sourceUrl: string; contentType: string; sizeBytes: number }
+> = {
+  "seed/the-long-room-v1.mp3": {
     sourceUrl:
       "https://upload.wikimedia.org/wikipedia/commons/f/fd/Evening_Fall_%28Piano%29_%28ISRC_USUAN1100235%29.mp3",
-    sourcePage:
-      "https://commons.wikimedia.org/wiki/File:Evening_Fall_(Piano)_(ISRC_USUAN1100235).mp3",
     contentType: "audio/mpeg",
-    credit: '"Evening Fall (Piano)" — Kevin MacLeod (incompetech.com), CC BY 3.0',
     sizeBytes: 5_397_796,
   },
-  {
-    key: "seed/the-long-room-v2.mp3",
+  "seed/the-long-room-v2.mp3": {
     sourceUrl:
       "https://upload.wikimedia.org/wikipedia/commons/a/ae/Crinoline_Dreams_%28ISRC_USUAN1700073%29.mp3",
-    sourcePage:
-      "https://commons.wikimedia.org/wiki/File:Crinoline_Dreams_(ISRC_USUAN1700073).mp3",
     contentType: "audio/mpeg",
-    credit: '"Crinoline Dreams" — Kevin MacLeod (incompetech.com), CC BY 3.0',
     sizeBytes: 7_888_307,
   },
-  {
-    key: "seed/stem-piano.mp3",
+  "seed/stem-piano.mp3": {
     sourceUrl:
       "https://upload.wikimedia.org/wikipedia/commons/f/fd/Evening_Fall_%28Piano%29_%28ISRC_USUAN1100235%29.mp3",
-    sourcePage:
-      "https://commons.wikimedia.org/wiki/File:Evening_Fall_(Piano)_(ISRC_USUAN1100235).mp3",
     contentType: "audio/mpeg",
-    credit: '"Evening Fall (Piano)" — Kevin MacLeod (incompetech.com), CC BY 3.0',
     sizeBytes: 5_397_796,
   },
-  {
-    key: "seed/stem-vocal.mp3",
+  "seed/stem-vocal.mp3": {
     sourceUrl:
       "https://upload.wikimedia.org/wikipedia/commons/3/36/Amazing_Grace_2011_%28ISRC_USUAN1100820%29.mp3",
-    sourcePage:
-      "https://commons.wikimedia.org/wiki/File:Amazing_Grace_2011_(ISRC_USUAN1100820).mp3",
     contentType: "audio/mpeg",
-    credit: '"Amazing Grace 2011" — Kevin MacLeod (incompetech.com), CC BY 3.0',
     sizeBytes: 7_572_292,
   },
-  {
-    key: "seed/click-72.mp3",
+  "seed/click-72.mp3": {
     sourceUrl:
       "https://upload.wikimedia.org/wikipedia/commons/f/f5/Heart_is_metronome_%28Antti_Luode%29.mp3",
-    sourcePage:
-      "https://commons.wikimedia.org/wiki/File:Heart_is_metronome_(Antti_Luode).mp3",
     contentType: "audio/mpeg",
-    credit: '"Heart is metronome" — Antti Luode, CC BY 3.0',
     sizeBytes: 3_542_354,
   },
-  {
-    key: "seed/commit-jules-bass.mp3",
+  "seed/commit-jules-bass.mp3": {
     sourceUrl:
       "https://upload.wikimedia.org/wikipedia/commons/a/a9/Bassy_Bass_%28Antti_Luode%29.mp3",
-    sourcePage:
-      "https://commons.wikimedia.org/wiki/File:Bassy_Bass_(Antti_Luode).mp3",
     contentType: "audio/mpeg",
-    credit: '"Bassy Bass" — Antti Luode, CC BY 3.0',
     sizeBytes: 3_483_309,
   },
-  {
-    key: "seed/commit-kenji-drums.mp3",
+  "seed/commit-kenji-drums.mp3": {
     sourceUrl:
       "https://upload.wikimedia.org/wikipedia/commons/8/89/Sleeping_Drum_%28Antti_Luode%29.mp3",
-    sourcePage:
-      "https://commons.wikimedia.org/wiki/File:Sleeping_Drum_(Antti_Luode).mp3",
     contentType: "audio/mpeg",
-    credit: '"Sleeping Drum" — Antti Luode, CC BY 3.0',
     sizeBytes: 4_913_255,
   },
-  {
-    key: "seed/commit-sade-drums.mp3",
+  "seed/commit-sade-drums.mp3": {
     sourceUrl:
       "https://upload.wikimedia.org/wikipedia/commons/0/0c/Bang_A_Drum_%28Antti_Luode%29.mp3",
-    sourcePage:
-      "https://commons.wikimedia.org/wiki/File:Bang_A_Drum_(Antti_Luode).mp3",
     contentType: "audio/mpeg",
-    credit: '"Bang A Drum" — Antti Luode, CC BY 3.0',
     sizeBytes: 4_853_171,
   },
-  {
-    key: "seed/commit-thiago-drums.mp3",
+  "seed/commit-thiago-drums.mp3": {
     sourceUrl:
       "https://upload.wikimedia.org/wikipedia/commons/d/d9/Jamming_with_a_drum_machine_%28Antti_Luode%29.mp3",
-    sourcePage:
-      "https://commons.wikimedia.org/wiki/File:Jamming_with_a_drum_machine_(Antti_Luode).mp3",
     contentType: "audio/mpeg",
-    credit: '"Jamming with a drum machine" — Antti Luode, CC BY 3.0',
     sizeBytes: 4_322_379,
   },
-  {
-    key: "seed/commit-ilse-drums.mp3",
+  "seed/commit-ilse-drums.mp3": {
     sourceUrl:
       "https://upload.wikimedia.org/wikipedia/commons/9/98/Rock_Drums_%28Antti_Luode%29.mp3",
-    sourcePage:
-      "https://commons.wikimedia.org/wiki/File:Rock_Drums_(Antti_Luode).mp3",
     contentType: "audio/mpeg",
-    credit: '"Rock Drums" — Antti Luode, CC BY 3.0',
     sizeBytes: 3_718_411,
   },
-  {
-    key: "seed/commit-dmitri-drums.mp3",
+  "seed/commit-dmitri-drums.mp3": {
     sourceUrl:
       "https://upload.wikimedia.org/wikipedia/commons/a/a6/Soul_Of_A_Drum_Machine_%28Antti_Luode%29.mp3",
-    sourcePage:
-      "https://commons.wikimedia.org/wiki/File:Soul_Of_A_Drum_Machine_(Antti_Luode).mp3",
     contentType: "audio/mpeg",
-    credit: '"Soul Of A Drum Machine" — Antti Luode, CC BY 3.0',
     sizeBytes: 4_436_268,
   },
-];
+};
+
+export const SEED_AUDIO_ASSETS: SeedAudioAsset[] = DEMO_SONG_CREDITS.map(
+  (credit) => {
+    const upload = SEED_AUDIO_UPLOAD_META[credit.key];
+    if (!upload) {
+      throw new Error(
+        `No upload metadata configured for seed audio key ${credit.key}`,
+      );
+    }
+    return {
+      ...credit,
+      ...upload,
+      credit: formatCreditLine(credit),
+    };
+  },
+);
 
 function parseObjectPath(path: string): { bucketName: string; objectName: string } {
   if (!path.startsWith("/")) path = `/${path}`;
