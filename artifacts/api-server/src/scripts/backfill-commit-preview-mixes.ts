@@ -1,16 +1,18 @@
 import { db, commitsTable } from "@workspace/db";
-import { ne } from "drizzle-orm";
 import { generateAndStoreCommitPreviewMix } from "../lib/commitPreviewMix";
 
 /**
  * Backfill `commits.previewMixUrl` for any commit that doesn't already have a
- * generated layered mix. Detects placeholders by checking whether the URL
- * lives under `/objects/songs/{songId}/commits/...` (the namespace
- * `uploadCommitPreviewMix` writes to). Anything else — null, seed mix
- * placeholders, or version mixes used as a stand-in — gets re-generated.
+ * generated layered mix. The single predicate is namespace-based: a URL is
+ * considered "real" only if it lives under
+ * `/objects/songs/{songId}/commits/{commitId}/` (the path
+ * `uploadCommitPreviewMix` writes to). Anything else — null, seed-mix
+ * placeholders, or a published version mix used as a stand-in — gets
+ * regenerated, regardless of commit status.
  *
- * Skips merged commits: their previewMixUrl points at the real published
- * version mix and re-mixing would duplicate the already-merged layer.
+ * Merged commits are included on purpose: we still want their "with commit"
+ * card to play a true single-stem-on-base preview rather than the full
+ * published mix (which already contains every other merged stem too).
  *
  * Idempotent and resumable — safe to re-run.
  */
@@ -22,19 +24,17 @@ async function main() {
       roundId: commitsTable.roundId,
       audioFileUrl: commitsTable.audioFileUrl,
       previewMixUrl: commitsTable.previewMixUrl,
-      status: commitsTable.status,
       overlayOffsetSeconds: commitsTable.overlayOffsetSeconds,
     })
-    .from(commitsTable)
-    .where(ne(commitsTable.status, "merged"));
+    .from(commitsTable);
 
   const needsBackfill = rows.filter((r) => {
     const url = r.previewMixUrl ?? "";
-    return !url.startsWith(`/objects/songs/${r.songId}/commits/`);
+    return !url.startsWith(`/objects/songs/${r.songId}/commits/${r.id}/`);
   });
 
   console.log(
-    `Found ${needsBackfill.length} non-merged commit(s) needing a real layered preview mix.`,
+    `Found ${needsBackfill.length} commit(s) needing a real layered preview mix.`,
   );
 
   let ok = 0;
