@@ -122,6 +122,7 @@ export const toCommitSummary = (r: CommitRow) => ({
   kind: r.commit.kind,
   audioFileUrl: r.commit.audioFileUrl,
   previewMixUrl: r.commit.previewMixUrl ?? null,
+  overlayOffsetSeconds: r.commit.overlayOffsetSeconds ?? 0,
   baseAudioUrl: r.baseAudioUrl ?? null,
   status: r.commit.status,
   voteCount: r.voteCount,

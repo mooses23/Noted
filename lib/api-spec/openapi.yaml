@@ -861,7 +861,7 @@ components:
 
     CommitSummary:
       type: object
-      required: [id, songId, roundId, contributorId, title, instrumentType, kind, audioFileUrl, status, voteCount, createdAt, contributor, roundNumber, songTitle, songSlug]
+      required: [id, songId, roundId, contributorId, title, instrumentType, kind, audioFileUrl, overlayOffsetSeconds, status, voteCount, createdAt, contributor, roundNumber, songTitle, songSlug]
       properties:
         id: { type: string, format: uuid }
         songId: { type: string, format: uuid }
@@ -877,6 +877,9 @@ components:
         previewMixUrl:
           type: string
           nullable: true
+        overlayOffsetSeconds:
+          type: number
+          format: float
         baseAudioUrl:
           type: string
           nullable: true
@@ -1080,6 +1083,10 @@ components:
         note: { type: string, maxLength: 500 }
         instrumentType: { type: string }
         audioObjectPath: { type: string }
+        overlayOffsetSeconds:
+          type: number
+          format: float
+          minimum: 0
         displayNameOverride: { type: string }
         socialHandle: { type: string }
         confirmedHumanMade: { type: boolean }

@@ -591,9 +591,10 @@ function NoteRow({
       id: `${commit.id}-overlay`,
       label: commit.title,
       source: commit.audioFileUrl,
+      offsetSeconds: commit.overlayOffsetSeconds ?? 0,
     });
     return out;
-  }, [commit.id, commit.audioFileUrl, commit.title, baseUrl, baseLabel]);
+  }, [commit.id, commit.audioFileUrl, commit.title, commit.overlayOffsetSeconds, baseUrl, baseLabel]);
 
   return (
     <div className="bg-card border border-border">

@@ -17,6 +17,8 @@ export interface SubmitCommitBody {
   note?: string;
   instrumentType: string;
   audioObjectPath: string;
+  /** @minimum 0 */
+  overlayOffsetSeconds?: number;
   displayNameOverride?: string;
   socialHandle?: string;
   confirmedHumanMade: boolean;

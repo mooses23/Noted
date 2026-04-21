@@ -219,6 +219,7 @@ export default function SubmitCommit() {
           roundId: song.currentRound.id,
           instrumentType: song.currentRound.allowedInstrumentType,
           audioObjectPath: objectPath,
+          overlayOffsetSeconds: overlayOffset,
           ...values,
         },
       },
