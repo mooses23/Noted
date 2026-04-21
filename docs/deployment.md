@@ -137,6 +137,19 @@ the schema. To force a destructive push (only on a database you own), use
    Output API, so the rewrite ships with the deployment artifact itself.
    This is why `vercel.json` no longer needs to declare any rewrites and
    no dashboard rewrite needs to be configured.
+
+   **Post-build smoke check.** Right after resolving `API_REWRITE_TARGET`,
+   the build script issues a `GET ${apiOrigin}/api/healthz` and fails the
+   deploy if the response isn't 2xx (or the request errors / times out).
+   This catches typos in the env var, expired preview URLs, and API
+   projects that haven't deployed yet — instead of shipping a "successful"
+   web build that 404s on every API call. The failure message includes
+   the resolved URL plus the HTTP status or network error.
+
+   - Default request timeout is 10s; override with
+     `API_HEALTH_CHECK_TIMEOUT_MS`.
+   - To skip the check (offline builds, local experimentation, or a
+     deliberately-not-yet-deployed API), set `SKIP_API_HEALTH_CHECK=1`.
 8. **Deploy**.
 9. Go back to the API project and set `ALLOWED_ORIGINS` to include the web
    project's URL (e.g. `https://layerstack-web.vercel.app`). Redeploy the
@@ -438,6 +451,16 @@ dashboard URL here so future on-calls can find it in one click:
 - **Build fails with `API_REWRITE_TARGET is not set`.** Add the env var
   to the failing environment (Production or Preview) per step 4.7, then
   redeploy.
+- **Build fails with `API health check failed`.** The post-build smoke
+  check in `scripts/build-vercel-output.mjs` couldn't reach
+  `${apiOrigin}/api/healthz` (or got a non-2xx response). Open the build
+  logs — the message includes the resolved URL plus the HTTP status or
+  network error. Common causes: typo in `API_REWRITE_TARGET`, the API
+  preview deployment hasn't built yet for this branch, the API is
+  returning 5xx (check the API project's logs), or the URL points at a
+  custom domain that hasn't finished DNS propagation. Fix and redeploy.
+  For an intentional offline / API-not-yet-deployed build, set
+  `SKIP_API_HEALTH_CHECK=1` on that environment.
 - **Build fails with `references ${VAR} but that environment variable is
   not set`.** You used `${VERCEL_GIT_COMMIT_REF}` (or similar) in the
   Preview value, but the deploy is running in an environment where that

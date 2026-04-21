@@ -417,6 +417,23 @@ export interface SubmitCommitBody {
   confirmedRightsGrant: boolean;
 }
 
+export interface Comment {
+  id: string;
+  songId: string;
+  authorId: string;
+  body: string;
+  createdAt: string;
+  author: ContributorLite;
+}
+
+export interface PostCommentBody {
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  body: string;
+}
+
 export type AdminAddSongFileBodyFileType =
   (typeof AdminAddSongFileBodyFileType)[keyof typeof AdminAddSongFileBodyFileType];
 

@@ -6,6 +6,7 @@ import {
   type Version,
   type Profile,
   type SongCredit,
+  type Comment,
 } from "@workspace/db";
 
 export const toSong = (s: Song) => ({
@@ -88,6 +89,15 @@ export const toContributor = (p: Profile) => ({
   username: p.username ?? null,
   avatarUrl: p.avatarUrl ?? null,
   socialHandle: p.socialHandle ?? null,
+});
+
+export const toComment = (c: Comment, author: Profile) => ({
+  id: c.id,
+  songId: c.songId,
+  authorId: c.authorId,
+  body: c.body,
+  createdAt: c.createdAt.toISOString(),
+  author: toContributor(author),
 });
 
 export const toProfile = (p: Profile) => ({

@@ -61,6 +61,72 @@ try {
   process.exit(1);
 }
 
+const skipHealthCheck = /^(1|true|yes)$/i.test(
+  process.env.SKIP_API_HEALTH_CHECK ?? "",
+);
+
+if (skipHealthCheck) {
+  console.log(
+    `[build-vercel-output] Skipping API health check ` +
+      `(SKIP_API_HEALTH_CHECK is set).`,
+  );
+} else {
+  const healthUrl = `${apiOrigin}/api/healthz`;
+  const DEFAULT_TIMEOUT_MS = 10000;
+  let timeoutMs = DEFAULT_TIMEOUT_MS;
+  const rawTimeout = process.env.API_HEALTH_CHECK_TIMEOUT_MS;
+  if (rawTimeout !== undefined && rawTimeout !== "") {
+    const parsed = Number(rawTimeout);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      timeoutMs = Math.floor(parsed);
+    } else {
+      console.warn(
+        `[build-vercel-output] Ignoring invalid ` +
+          `API_HEALTH_CHECK_TIMEOUT_MS="${rawTimeout}" ` +
+          `(must be a positive number); using default ${DEFAULT_TIMEOUT_MS}ms.`,
+      );
+    }
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let response;
+  try {
+    response = await fetch(healthUrl, {
+      method: "GET",
+      headers: { accept: "application/json" },
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    const reason =
+      err instanceof Error
+        ? err.name === "AbortError"
+          ? `timed out after ${timeoutMs}ms`
+          : `${err.name}: ${err.message}`
+        : String(err);
+    console.error(
+      `[build-vercel-output] API health check failed.\n` +
+        `  URL: ${healthUrl}\n` +
+        `  Error: ${reason}\n` +
+        `  Set SKIP_API_HEALTH_CHECK=1 to bypass for offline/local builds.`,
+    );
+    process.exit(1);
+  }
+  clearTimeout(timer);
+  if (!response.ok) {
+    console.error(
+      `[build-vercel-output] API health check failed.\n` +
+        `  URL: ${healthUrl}\n` +
+        `  HTTP status: ${response.status} ${response.statusText}\n` +
+        `  Set SKIP_API_HEALTH_CHECK=1 to bypass for offline/local builds.`,
+    );
+    process.exit(1);
+  }
+  console.log(
+    `[build-vercel-output] API health check passed (${response.status} ${healthUrl}).`,
+  );
+}
+
 rmSync(outputDir, { recursive: true, force: true });
 mkdirSync(staticDir, { recursive: true });
 cpSync(viteOutDir, staticDir, { recursive: true });

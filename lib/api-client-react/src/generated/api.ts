@@ -25,6 +25,7 @@ import type {
   AdminSetCommitStatusBody,
   AdminStats,
   AdvancePhaseBody,
+  Comment,
   CommitDetail,
   CommitSummary,
   CreateRoundBody,
@@ -40,6 +41,7 @@ import type {
   ListSongsParams,
   LogDownload200,
   LogDownloadBody,
+  PostCommentBody,
   PublicStats,
   ReorderSongCreditsBody,
   RequestUploadUrlBody,
@@ -1478,6 +1480,265 @@ export const useSubmitCommit = <
   TContext
 > => {
   return useMutation(getSubmitCommitMutationOptions(options));
+};
+
+/**
+ * @summary List comments on a song, newest first
+ */
+export const getListSongCommentsUrl = (songId: string) => {
+  return `/api/songs/${songId}/comments`;
+};
+
+export const listSongComments = async (
+  songId: string,
+  options?: RequestInit,
+): Promise<Comment[]> => {
+  return customFetch<Comment[]>(getListSongCommentsUrl(songId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListSongCommentsQueryKey = (songId: string) => {
+  return [`/api/songs/${songId}/comments`] as const;
+};
+
+export const getListSongCommentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSongComments>>,
+  TError = ErrorType<unknown>,
+>(
+  songId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSongComments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListSongCommentsQueryKey(songId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSongComments>>
+  > = ({ signal }) => listSongComments(songId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!songId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSongComments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSongCommentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSongComments>>
+>;
+export type ListSongCommentsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List comments on a song, newest first
+ */
+
+export function useListSongComments<
+  TData = Awaited<ReturnType<typeof listSongComments>>,
+  TError = ErrorType<unknown>,
+>(
+  songId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSongComments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSongCommentsQueryOptions(songId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Post a comment on a song (auth required)
+ */
+export const getPostSongCommentUrl = (songId: string) => {
+  return `/api/songs/${songId}/comments`;
+};
+
+export const postSongComment = async (
+  songId: string,
+  postCommentBody: PostCommentBody,
+  options?: RequestInit,
+): Promise<Comment> => {
+  return customFetch<Comment>(getPostSongCommentUrl(songId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(postCommentBody),
+  });
+};
+
+export const getPostSongCommentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postSongComment>>,
+    TError,
+    { songId: string; data: BodyType<PostCommentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postSongComment>>,
+  TError,
+  { songId: string; data: BodyType<PostCommentBody> },
+  TContext
+> => {
+  const mutationKey = ["postSongComment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postSongComment>>,
+    { songId: string; data: BodyType<PostCommentBody> }
+  > = (props) => {
+    const { songId, data } = props ?? {};
+
+    return postSongComment(songId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostSongCommentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postSongComment>>
+>;
+export type PostSongCommentMutationBody = BodyType<PostCommentBody>;
+export type PostSongCommentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Post a comment on a song (auth required)
+ */
+export const usePostSongComment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postSongComment>>,
+    TError,
+    { songId: string; data: BodyType<PostCommentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postSongComment>>,
+  TError,
+  { songId: string; data: BodyType<PostCommentBody> },
+  TContext
+> => {
+  return useMutation(getPostSongCommentMutationOptions(options));
+};
+
+/**
+ * @summary Delete a comment (author or admin)
+ */
+export const getDeleteCommentUrl = (commentId: string) => {
+  return `/api/comments/${commentId}`;
+};
+
+export const deleteComment = async (
+  commentId: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteCommentUrl(commentId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteCommentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteComment>>,
+    TError,
+    { commentId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteComment>>,
+  TError,
+  { commentId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteComment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteComment>>,
+    { commentId: string }
+  > = (props) => {
+    const { commentId } = props ?? {};
+
+    return deleteComment(commentId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteCommentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteComment>>
+>;
+
+export type DeleteCommentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a comment (author or admin)
+ */
+export const useDeleteComment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteComment>>,
+    TError,
+    { commentId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteComment>>,
+  TError,
+  { commentId: string },
+  TContext
+> => {
+  return useMutation(getDeleteCommentMutationOptions(options));
 };
 
 /**

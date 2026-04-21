@@ -797,6 +797,49 @@ export const SubmitCommitResponse = zod
   );
 
 /**
+ * @summary List comments on a song, newest first
+ */
+export const ListSongCommentsParams = zod.object({
+  songId: zod.coerce.string().uuid(),
+});
+
+export const ListSongCommentsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  songId: zod.string().uuid(),
+  authorId: zod.string().uuid(),
+  body: zod.string(),
+  createdAt: zod.coerce.date(),
+  author: zod.object({
+    id: zod.string().uuid(),
+    displayName: zod.string(),
+    username: zod.string().nullish(),
+    avatarUrl: zod.string().nullish(),
+    socialHandle: zod.string().nullish(),
+  }),
+});
+export const ListSongCommentsResponse = zod.array(ListSongCommentsResponseItem);
+
+/**
+ * @summary Post a comment on a song (auth required)
+ */
+export const PostSongCommentParams = zod.object({
+  songId: zod.coerce.string().uuid(),
+});
+
+export const postSongCommentBodyBodyMax = 2000;
+
+export const PostSongCommentBody = zod.object({
+  body: zod.string().min(1).max(postSongCommentBodyBodyMax),
+});
+
+/**
+ * @summary Delete a comment (author or admin)
+ */
+export const DeleteCommentParams = zod.object({
+  commentId: zod.coerce.string().uuid(),
+});
+
+/**
  * @summary Request a presigned URL to upload a file directly to storage
  */
 export const RequestUploadUrlBody = zod.object({
