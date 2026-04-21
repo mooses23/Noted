@@ -635,7 +635,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/Song"
         - type: object
-          required: [currentRound, currentVersion, stems, totalCommits, totalVotes, versionCount]
+          required: [currentRound, currentVersion, stems, thirdPartyCredits, totalCommits, totalVotes, versionCount]
           properties:
             currentRound:
               nullable: true
@@ -646,9 +646,29 @@ components:
             stems:
               type: array
               items: { $ref: "#/components/schemas/SongFile" }
+            thirdPartyCredits:
+              type: array
+              items: { $ref: "#/components/schemas/SongCredit" }
             totalCommits: { type: integer }
             totalVotes: { type: integer }
             versionCount: { type: integer }
+
+    SongCredit:
+      type: object
+      required: [id, songId, title, author, sourceUrl, licenseName, licenseUrl, sortOrder, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        songId: { type: string, format: uuid }
+        title: { type: string }
+        author: { type: string }
+        sourceUrl: { type: string }
+        licenseName: { type: string }
+        licenseUrl: { type: string }
+        role:
+          type: string
+          nullable: true
+        sortOrder: { type: integer }
+        createdAt: { type: string, format: date-time }
 
     FeaturedSong:
       type: object

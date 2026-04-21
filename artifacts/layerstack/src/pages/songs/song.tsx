@@ -8,7 +8,6 @@ import { storageUrl } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { CoverImage } from "@/components/CoverImage";
-import { DEMO_SONG_SLUG, DEMO_SONG_CREDITS, CC_BY_3_LICENSE } from "@workspace/seed-content";
 
 export default function SongDetail() {
   const params = useParams();
@@ -142,28 +141,20 @@ export default function SongDetail() {
             </div>
           </section>
 
-          {/* Music Credits (demo song only) */}
-          {song.slug === DEMO_SONG_SLUG && (
+          {/* Third-party Music Credits (per-song, data-driven) */}
+          {song.thirdPartyCredits.length > 0 && (
             <section>
               <h2 className="text-2xl font-serif font-bold mb-6">Music Credits</h2>
               <div className="bg-card border border-border p-6 space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  This demo uses recordings from Wikimedia Commons under{" "}
-                  <a
-                    href={CC_BY_3_LICENSE.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline hover:text-foreground"
-                  >
-                    {CC_BY_3_LICENSE.name}
-                  </a>
-                  .
+                  This track includes third-party material used under the
+                  licenses noted below.
                 </p>
                 <ul className="space-y-2 text-sm">
-                  {DEMO_SONG_CREDITS.map((credit) => (
-                    <li key={credit.key} className="leading-snug">
+                  {song.thirdPartyCredits.map((credit) => (
+                    <li key={credit.id} className="leading-snug">
                       <a
-                        href={credit.sourcePage}
+                        href={credit.sourceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="font-medium hover:text-primary underline-offset-2 hover:underline"
@@ -172,7 +163,15 @@ export default function SongDetail() {
                       </a>{" "}
                       <span className="text-muted-foreground">
                         — {credit.author}
-                      </span>
+                      </span>{" "}
+                      <a
+                        href={credit.licenseUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs uppercase tracking-widest text-primary hover:underline"
+                      >
+                        {credit.licenseName}
+                      </a>
                     </li>
                   ))}
                 </ul>

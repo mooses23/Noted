@@ -3,6 +3,7 @@ import {
   profilesTable,
   songsTable,
   songFilesTable,
+  songCreditsTable,
   roundsTable,
   commitsTable,
   votesTable,
@@ -11,6 +12,7 @@ import {
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { uploadSeedAudio } from "./lib/seed-audio";
+import { DEMO_SONG_CREDITS, CC_BY_3_LICENSE } from "@workspace/seed-content";
 
 async function main() {
   console.log("Seeding LayerStack...");
@@ -344,6 +346,26 @@ async function main() {
           .onConflictDoNothing();
       }
     }
+  }
+
+  // 9b. Third-party credits for the demo song (idempotent)
+  const existingCredits = await db
+    .select()
+    .from(songCreditsTable)
+    .where(eq(songCreditsTable.songId, songId));
+  if (existingCredits.length === 0) {
+    await db.insert(songCreditsTable).values(
+      DEMO_SONG_CREDITS.map((c, idx) => ({
+        songId,
+        title: c.title,
+        author: c.author,
+        sourceUrl: c.sourcePage,
+        licenseName: CC_BY_3_LICENSE.name,
+        licenseUrl: CC_BY_3_LICENSE.url,
+        role: c.key.replace(/^seed\//, ""),
+        sortOrder: idx,
+      })),
+    );
   }
 
   // 10. URL sync — keep seeded rows pointing at the current .mp3 storage keys

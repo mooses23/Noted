@@ -46,6 +46,7 @@ export * from "./requestUploadUrlResponseMetadata";
 export * from "./round";
 export * from "./roundStatus";
 export * from "./song";
+export * from "./songCredit";
 export * from "./songDetail";
 export * from "./songFile";
 export * from "./songFileFileType";

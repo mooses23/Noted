@@ -109,10 +109,24 @@ export interface Version {
   createdAt: string;
 }
 
+export interface SongCredit {
+  id: string;
+  songId: string;
+  title: string;
+  author: string;
+  sourceUrl: string;
+  licenseName: string;
+  licenseUrl: string;
+  role?: string | null;
+  sortOrder: number;
+  createdAt: string;
+}
+
 export type SongDetail = Song & {
   currentRound: Round | null;
   currentVersion: Version | null;
   stems: SongFile[];
+  thirdPartyCredits: SongCredit[];
   totalCommits: number;
   totalVotes: number;
   versionCount: number;

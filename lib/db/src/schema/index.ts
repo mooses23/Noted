@@ -233,6 +233,27 @@ export const versionMergesTable = pgTable(
   ],
 );
 
+export const songCreditsTable = pgTable(
+  "song_credits",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    songId: uuid("song_id")
+      .notNull()
+      .references(() => songsTable.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    author: text("author").notNull(),
+    sourceUrl: text("source_url").notNull(),
+    licenseName: text("license_name").notNull(),
+    licenseUrl: text("license_url").notNull(),
+    role: text("role"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("song_credits_song_idx").on(t.songId)],
+);
+
 export const downloadsLogTable = pgTable(
   "downloads_log",
   {
@@ -275,9 +296,17 @@ export const songsRelations = relations(songsTable, ({ many, one }) => ({
   rounds: many(roundsTable),
   commits: many(commitsTable),
   versions: many(versionsTable),
+  credits: many(songCreditsTable),
   currentVersion: one(versionsTable, {
     fields: [songsTable.currentVersionId],
     references: [versionsTable.id],
+  }),
+}));
+
+export const songCreditsRelations = relations(songCreditsTable, ({ one }) => ({
+  song: one(songsTable, {
+    fields: [songCreditsTable.songId],
+    references: [songsTable.id],
   }),
 }));
 
@@ -360,3 +389,5 @@ export type Vote = typeof votesTable.$inferSelect;
 export type Version = typeof versionsTable.$inferSelect;
 export type InsertVersion = typeof versionsTable.$inferInsert;
 export type VersionMerge = typeof versionMergesTable.$inferSelect;
+export type SongCredit = typeof songCreditsTable.$inferSelect;
+export type InsertSongCredit = typeof songCreditsTable.$inferInsert;
