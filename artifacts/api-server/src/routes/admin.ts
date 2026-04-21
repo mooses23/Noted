@@ -191,6 +191,18 @@ router.post("/rounds", async (req: Request, res: Response) => {
     res.status(404).json({ error: "Song not found" });
     return;
   }
+  if (b.baseVersionId) {
+    const [bv] = await db
+      .select({ songId: versionsTable.songId })
+      .from(versionsTable)
+      .where(eq(versionsTable.id, b.baseVersionId));
+    if (!bv || bv.songId !== b.songId) {
+      res
+        .status(400)
+        .json({ error: "baseVersionId must belong to the same song." });
+      return;
+    }
+  }
   const requestedKind = b.kind ?? "structure";
   if (song.phase === "structure" && requestedKind === "accent") {
     res.status(400).json({
@@ -247,6 +259,26 @@ router.post("/rounds", async (req: Request, res: Response) => {
 router.patch("/rounds/:roundId", async (req: Request, res: Response) => {
   const b = parseBody(AdminUpdateRoundBody, req.body, res);
   if (!b) return;
+  if (b.baseVersionId !== undefined && b.baseVersionId !== null) {
+    const [existingRound] = await db
+      .select({ songId: roundsTable.songId })
+      .from(roundsTable)
+      .where(eq(roundsTable.id, req.params.roundId as string));
+    if (!existingRound) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const [bv] = await db
+      .select({ songId: versionsTable.songId })
+      .from(versionsTable)
+      .where(eq(versionsTable.id, b.baseVersionId));
+    if (!bv || bv.songId !== existingRound.songId) {
+      res
+        .status(400)
+        .json({ error: "baseVersionId must belong to the same song." });
+      return;
+    }
+  }
   if (b.kind !== undefined) {
     const [existingRound] = await db
       .select({ songId: roundsTable.songId })
