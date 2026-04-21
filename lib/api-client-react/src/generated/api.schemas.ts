@@ -434,6 +434,27 @@ export interface PostCommentBody {
   body: string;
 }
 
+export interface ReportCommentBody {
+  /**
+   * @minLength 1
+   * @maxLength 500
+   */
+  reason: string;
+}
+
+export interface CommentReportSummary {
+  id: string;
+  reason: string;
+  createdAt: string;
+}
+
+export interface ReportedComment {
+  comment: Comment;
+  reports: CommentReportSummary[];
+  /** @minimum 1 */
+  reportCount: number;
+}
+
 export interface CommitDraft {
   id: string;
   songId: string;
@@ -686,6 +707,10 @@ export const ListCommitsSort = {
 export type ListRisingCommitsParams = {
   limit?: number;
   genre?: string;
+};
+
+export type ReportComment201 = {
+  ok: boolean;
 };
 
 export type LogDownloadBody = {

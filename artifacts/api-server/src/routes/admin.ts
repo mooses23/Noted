@@ -9,6 +9,9 @@ import {
   versionsTable,
   versionMergesTable,
   adminActionsTable,
+  commentsTable,
+  commentReportsTable,
+  profilesTable,
 } from "@workspace/db";
 import { and, asc, eq, desc, inArray, sql } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
@@ -785,6 +788,61 @@ router.post("/songs/:songId/credits/reorder", async (req: Request, res: Response
     return;
   }
   res.json(result.rows.map(toSongCredit));
+});
+
+router.get("/comments/reports", async (_req: Request, res: Response) => {
+  // Group reports by comment, newest reported-comment first.
+  const rows = await db
+    .select({
+      report: commentReportsTable,
+      comment: commentsTable,
+      author: profilesTable,
+    })
+    .from(commentReportsTable)
+    .innerJoin(commentsTable, eq(commentReportsTable.commentId, commentsTable.id))
+    .innerJoin(profilesTable, eq(commentsTable.authorId, profilesTable.id))
+    .orderBy(desc(commentReportsTable.createdAt));
+
+  const byComment = new Map<
+    string,
+    {
+      comment: typeof commentsTable.$inferSelect;
+      author: typeof profilesTable.$inferSelect;
+      reports: { id: string; reason: string; createdAt: string }[];
+    }
+  >();
+  for (const r of rows) {
+    const entry = byComment.get(r.comment.id);
+    const reportItem = {
+      id: r.report.id,
+      reason: r.report.reason,
+      createdAt: r.report.createdAt.toISOString(),
+    };
+    if (entry) {
+      entry.reports.push(reportItem);
+    } else {
+      byComment.set(r.comment.id, {
+        comment: r.comment,
+        author: r.author,
+        reports: [reportItem],
+      });
+    }
+  }
+
+  res.json(
+    Array.from(byComment.values()).map((e) => ({
+      comment: {
+        id: e.comment.id,
+        songId: e.comment.songId,
+        authorId: e.comment.authorId,
+        body: e.comment.body,
+        createdAt: e.comment.createdAt.toISOString(),
+        author: toContributor(e.author),
+      },
+      reports: e.reports,
+      reportCount: e.reports.length,
+    })),
+  );
 });
 
 export default router;

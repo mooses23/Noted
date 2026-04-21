@@ -354,6 +354,30 @@ export const downloadsLogTable = pgTable(
   ],
 );
 
+export const commentReportsTable = pgTable(
+  "comment_reports",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    commentId: uuid("comment_id")
+      .notNull()
+      .references(() => commentsTable.id, { onDelete: "cascade" }),
+    reporterId: uuid("reporter_id").references(() => profilesTable.id, {
+      onDelete: "set null",
+    }),
+    reason: text("reason").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("comment_reports_comment_reporter_uq").on(
+      t.commentId,
+      t.reporterId,
+    ),
+    index("comment_reports_comment_idx").on(t.commentId),
+  ],
+);
+
 export const adminActionsTable = pgTable("admin_actions", {
   id: uuid("id").defaultRandom().primaryKey(),
   actorId: uuid("actor_id").references(() => profilesTable.id, {
@@ -472,3 +496,5 @@ export type Comment = typeof commentsTable.$inferSelect;
 export type InsertComment = typeof commentsTable.$inferInsert;
 export type CommitDraft = typeof commitDraftsTable.$inferSelect;
 export type InsertCommitDraft = typeof commitDraftsTable.$inferInsert;
+export type CommentReport = typeof commentReportsTable.$inferSelect;
+export type InsertCommentReport = typeof commentReportsTable.$inferInsert;

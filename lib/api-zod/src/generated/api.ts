@@ -840,6 +840,19 @@ export const DeleteCommentParams = zod.object({
 });
 
 /**
+ * @summary Flag a comment for moderation (auth required, idempotent per user)
+ */
+export const ReportCommentParams = zod.object({
+  commentId: zod.coerce.string().uuid(),
+});
+
+export const reportCommentBodyReasonMax = 500;
+
+export const ReportCommentBody = zod.object({
+  reason: zod.string().min(1).max(reportCommentBodyReasonMax),
+});
+
+/**
  * @summary Request a presigned URL to upload a file directly to storage
  */
 export const RequestUploadUrlBody = zod.object({
@@ -1633,3 +1646,35 @@ export const AdminPreviewVersionMixResponse = zod.object({
   objectPath: zod.string(),
   sizeBytes: zod.number(),
 });
+
+/**
+ * @summary List comments with at least one user-submitted report
+ */
+
+export const AdminListCommentReportsResponseItem = zod.object({
+  comment: zod.object({
+    id: zod.string().uuid(),
+    songId: zod.string().uuid(),
+    authorId: zod.string().uuid(),
+    body: zod.string(),
+    createdAt: zod.coerce.date(),
+    author: zod.object({
+      id: zod.string().uuid(),
+      displayName: zod.string(),
+      username: zod.string().nullish(),
+      avatarUrl: zod.string().nullish(),
+      socialHandle: zod.string().nullish(),
+    }),
+  }),
+  reports: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      reason: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  reportCount: zod.number().min(1),
+});
+export const AdminListCommentReportsResponse = zod.array(
+  AdminListCommentReportsResponseItem,
+);

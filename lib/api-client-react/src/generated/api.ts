@@ -46,6 +46,9 @@ import type {
   PostCommentBody,
   PublicStats,
   ReorderSongCreditsBody,
+  ReportComment201,
+  ReportCommentBody,
+  ReportedComment,
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
   Round,
@@ -1742,6 +1745,93 @@ export const useDeleteComment = <
   TContext
 > => {
   return useMutation(getDeleteCommentMutationOptions(options));
+};
+
+/**
+ * @summary Flag a comment for moderation (auth required, idempotent per user)
+ */
+export const getReportCommentUrl = (commentId: string) => {
+  return `/api/comments/${commentId}/reports`;
+};
+
+export const reportComment = async (
+  commentId: string,
+  reportCommentBody: ReportCommentBody,
+  options?: RequestInit,
+): Promise<ReportComment201> => {
+  return customFetch<ReportComment201>(getReportCommentUrl(commentId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(reportCommentBody),
+  });
+};
+
+export const getReportCommentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reportComment>>,
+    TError,
+    { commentId: string; data: BodyType<ReportCommentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reportComment>>,
+  TError,
+  { commentId: string; data: BodyType<ReportCommentBody> },
+  TContext
+> => {
+  const mutationKey = ["reportComment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reportComment>>,
+    { commentId: string; data: BodyType<ReportCommentBody> }
+  > = (props) => {
+    const { commentId, data } = props ?? {};
+
+    return reportComment(commentId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReportCommentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reportComment>>
+>;
+export type ReportCommentMutationBody = BodyType<ReportCommentBody>;
+export type ReportCommentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Flag a comment for moderation (auth required, idempotent per user)
+ */
+export const useReportComment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reportComment>>,
+    TError,
+    { commentId: string; data: BodyType<ReportCommentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof reportComment>>,
+  TError,
+  { commentId: string; data: BodyType<ReportCommentBody> },
+  TContext
+> => {
+  return useMutation(getReportCommentMutationOptions(options));
 };
 
 /**
@@ -3789,3 +3879,79 @@ export const useAdminPreviewVersionMix = <
 > => {
   return useMutation(getAdminPreviewVersionMixMutationOptions(options));
 };
+
+/**
+ * @summary List comments with at least one user-submitted report
+ */
+export const getAdminListCommentReportsUrl = () => {
+  return `/api/admin/comments/reports`;
+};
+
+export const adminListCommentReports = async (
+  options?: RequestInit,
+): Promise<ReportedComment[]> => {
+  return customFetch<ReportedComment[]>(getAdminListCommentReportsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getAdminListCommentReportsQueryKey = () => {
+  return [`/api/admin/comments/reports`] as const;
+};
+
+export const getAdminListCommentReportsQueryOptions = <
+  TData = Awaited<ReturnType<typeof adminListCommentReports>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof adminListCommentReports>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getAdminListCommentReportsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof adminListCommentReports>>
+  > = ({ signal }) => adminListCommentReports({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof adminListCommentReports>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type AdminListCommentReportsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof adminListCommentReports>>
+>;
+export type AdminListCommentReportsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List comments with at least one user-submitted report
+ */
+
+export function useAdminListCommentReports<
+  TData = Awaited<ReturnType<typeof adminListCommentReports>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof adminListCommentReports>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getAdminListCommentReportsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}

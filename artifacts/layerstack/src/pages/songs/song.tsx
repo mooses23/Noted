@@ -14,6 +14,7 @@ import {
   useListSongComments,
   usePostSongComment,
   useDeleteComment,
+  useReportComment,
   getListSongCommentsQueryKey,
   type CommitSummary,
   type Comment,
@@ -670,6 +671,7 @@ function CommentsSection({ songId }: { songId: string }) {
 
   const postMutation = usePostSongComment();
   const deleteMutation = useDeleteComment();
+  const reportMutation = useReportComment();
 
   const isAdmin = !!user?.profile?.isAdmin;
   const myId = user?.profile?.id ?? null;
@@ -692,6 +694,31 @@ function CommentsSection({ songId }: { songId: string }) {
             variant: "destructive",
           });
         },
+      },
+    );
+  };
+
+  const handleReport = (commentId: string) => {
+    const reason = window.prompt(
+      "Why are you reporting this comment? (spam, abuse, off-topic, etc.)",
+    );
+    if (reason === null) return;
+    const trimmed = reason.trim();
+    if (!trimmed) return;
+    reportMutation.mutate(
+      { commentId, data: { reason: trimmed.slice(0, 500) } },
+      {
+        onSuccess: () =>
+          toast({
+            title: "Thanks — sent to moderators",
+            description: "We'll review this shortly.",
+          }),
+        onError: (err) =>
+          toast({
+            title: "Couldn't report comment",
+            description: err.message,
+            variant: "destructive",
+          }),
       },
     );
   };
@@ -788,15 +815,27 @@ function CommentsSection({ songId }: { songId: string }) {
                       {format(new Date(c.createdAt), "MMM d, yyyy · h:mm a")}
                     </span>
                   </div>
-                  {canDelete && (
-                    <button
-                      onClick={() => handleDelete(c.id)}
-                      disabled={deleteMutation.isPending}
-                      className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive disabled:opacity-50"
-                    >
-                      Delete
-                    </button>
-                  )}
+                  <div className="flex items-center gap-3 shrink-0">
+                    {user && myId !== c.authorId && (
+                      <button
+                        onClick={() => handleReport(c.id)}
+                        disabled={reportMutation.isPending}
+                        className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive disabled:opacity-50"
+                        title="Report this comment to moderators"
+                      >
+                        Report
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        onClick={() => handleDelete(c.id)}
+                        disabled={deleteMutation.isPending}
+                        className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <p className="text-sm whitespace-pre-wrap break-words">
                   {c.body}
