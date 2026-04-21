@@ -413,7 +413,19 @@ router.post("/versions", async (req: Request, res: Response) => {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to publish version";
-    res.status(400).json({ error: message });
+    // Known validation messages we throw above are user-correctable (400).
+    // Anything else is an unexpected server-side failure (500).
+    const isValidation =
+      message.startsWith("One or more merged commit IDs do not exist.") ||
+      message.startsWith("Merged commits must belong to song") ||
+      message.includes("single-merge") ||
+      message.includes("not found for merge validation");
+    if (isValidation) {
+      res.status(400).json({ error: message });
+    } else {
+      console.error("[admin/versions] publish failed:", err);
+      res.status(500).json({ error: "Failed to publish version" });
+    }
     return;
   }
 
