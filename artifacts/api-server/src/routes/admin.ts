@@ -227,7 +227,6 @@ router.post("/rounds", async (req: Request, res: Response) => {
       await notifyDraftsBecameSubmittable({
         roundId: created.id,
         songId: created.songId,
-        songSlug: song.slug,
         songTitle: song.title,
         roundTitle: created.title,
         allowedInstrumentType: created.allowedInstrumentType,
@@ -303,14 +302,13 @@ router.patch("/rounds/:roundId", async (req: Request, res: Response) => {
     // (draftId, roundId) row, so re-PATCHing or close→open won't duplicate.
     try {
       const [parentSong] = await db
-        .select({ slug: songsTable.slug, title: songsTable.title })
+        .select({ title: songsTable.title })
         .from(songsTable)
         .where(eq(songsTable.id, updated.songId));
       if (parentSong) {
         await notifyDraftsBecameSubmittable({
           roundId: updated.id,
           songId: updated.songId,
-          songSlug: parentSong.slug,
           songTitle: parentSong.title,
           roundTitle: updated.title,
           allowedInstrumentType: updated.allowedInstrumentType,

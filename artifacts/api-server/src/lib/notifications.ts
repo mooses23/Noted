@@ -161,7 +161,6 @@ export async function notifyCommitsMerged(args: {
 export async function notifyDraftsBecameSubmittable(args: {
   roundId: string;
   songId: string;
-  songSlug: string;
   songTitle: string;
   roundTitle: string;
   allowedInstrumentType: string;
@@ -201,25 +200,39 @@ export async function notifyDraftsBecameSubmittable(args: {
 
   if (eligible.length === 0) return 0;
 
-  const notifs: InsertNotification[] = eligible.map((d) => ({
-    userId: d.contributorId,
-    type: "draft_submittable",
-    title: `Your saved Note “${d.title}” is ready to submit`,
-    body: `A new round opened on “${args.songTitle}”: ${args.roundTitle}.`,
-    linkPath: `/profile`,
-    actorId: null,
-    songId: args.songId,
-    commentId: null,
-  }));
-
-  await db.transaction(async (tx) => {
-    await tx.insert(notificationsTable).values(notifs);
-    await tx
+  // Claim the (draftId, roundId) slots first so concurrent invocations can't
+  // both produce notifications: only one will insert each unique row, and the
+  // returning() clause tells us which ones we actually own. We then build
+  // notifications exclusively for those.
+  return await db.transaction(async (tx) => {
+    const claimed = await tx
       .insert(draftRoundNotificationsTable)
-      .values(eligible.map((d) => ({ draftId: d.draftId, roundId: args.roundId })))
-      .onConflictDoNothing();
-  });
+      .values(
+        eligible.map((d) => ({ draftId: d.draftId, roundId: args.roundId })),
+      )
+      .onConflictDoNothing()
+      .returning({ draftId: draftRoundNotificationsTable.draftId });
 
-  return notifs.length;
+    if (claimed.length === 0) return 0;
+
+    const claimedIds = new Set(claimed.map((c) => c.draftId));
+    const toNotify = eligible.filter((d) => claimedIds.has(d.draftId));
+
+    const notifs: InsertNotification[] = toNotify.map((d) => ({
+      userId: d.contributorId,
+      type: "draft_submittable",
+      title: `Your saved Note “${d.title}” is ready to submit`,
+      body: `A new round opened on “${args.songTitle}”: ${args.roundTitle}.`,
+      linkPath: `/profile`,
+      actorId: null,
+      songId: args.songId,
+      commentId: null,
+    }));
+
+    if (notifs.length > 0) {
+      await tx.insert(notificationsTable).values(notifs);
+    }
+    return notifs.length;
+  });
 }
 
