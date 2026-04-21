@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, Link, useLocation } from "wouter";
+import { useParams, Link, useLocation, useSearch } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -7,6 +7,8 @@ import {
   useGetSongBySlug,
   useSubmitCommit,
   useCreateDraft,
+  useUpdateDraft,
+  useListMyDrafts,
   useGetCurrentUser,
   getListMyDraftsQueryKey,
 } from "@workspace/api-client-react";
@@ -81,16 +83,30 @@ export default function SubmitCommit() {
   const params = useParams();
   const slug = params.slug || "";
   const [, setLocation] = useLocation();
+  const search = useSearch();
+  const draftId = useMemo(() => {
+    const sp = new URLSearchParams(search);
+    return sp.get("draftId");
+  }, [search]);
+  const isEditing = !!draftId;
   const { toast } = useToast();
 
   const { data: user, isLoading: isUserLoading } = useGetCurrentUser();
   const { data: song, isLoading: isSongLoading } = useGetSongBySlug(slug, {
     query: { enabled: !!slug, queryKey: getGetSongBySlugQueryKey(slug) },
   });
+  const { data: drafts, isLoading: draftsLoading } = useListMyDrafts({
+    query: { enabled: isEditing },
+  });
+  const editingDraft = useMemo(
+    () => (isEditing ? drafts?.find((d) => d.id === draftId) ?? null : null),
+    [isEditing, drafts, draftId],
+  );
 
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [objectPath, setObjectPath] = useState<string | null>(null);
   const [overlayOffset, setOverlayOffset] = useState(0);
+  const [prefilled, setPrefilled] = useState(false);
 
   const { uploadFile, isUploading, progress } = useUpload({
     onSuccess: (res) => {
@@ -111,6 +127,7 @@ export default function SubmitCommit() {
 
   const submitMutation = useSubmitCommit();
   const draftMutation = useCreateDraft();
+  const updateDraftMutation = useUpdateDraft();
   const queryClient = useQueryClient();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -138,6 +155,23 @@ export default function SubmitCommit() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioFile, objectPath, isUploading, song?.id, song?.currentRound?.id]);
 
+  // Prefill the form from an existing draft once the data has loaded.
+  useEffect(() => {
+    if (!isEditing || prefilled || !editingDraft) return;
+    form.reset({
+      title: editingDraft.title,
+      note: editingDraft.note ?? "",
+      draftInstrumentType: editingDraft.instrumentType,
+      confirmedHumanMade: editingDraft.confirmedHumanMade,
+      confirmedRightsGrant: editingDraft.confirmedRightsGrant,
+      displayNameOverride: editingDraft.displayNameOverride ?? "",
+      socialHandle: editingDraft.socialHandle ?? "",
+    });
+    setOverlayOffset(editingDraft.overlayOffsetSeconds ?? 0);
+    setObjectPath(editingDraft.audioFileUrl);
+    setPrefilled(true);
+  }, [isEditing, prefilled, editingDraft, form]);
+
   const baseLayer = useMemo<WaveformLayer | null>(() => {
     if (!song?.currentVersion?.officialMixUrl) return null;
     return {
@@ -162,12 +196,28 @@ export default function SubmitCommit() {
     return layers;
   }, [baseLayer, audioFile, overlayOffset, form.watch("title")]);
 
-  if (isSongLoading || isUserLoading)
+  if (isSongLoading || isUserLoading || (isEditing && draftsLoading))
     return (
       <div className="container mx-auto p-12 text-center text-muted-foreground">
         Loading studio...
       </div>
     );
+
+  if (isEditing && !editingDraft && !draftsLoading) {
+    return (
+      <div className="container mx-auto px-6 py-20 max-w-2xl text-center">
+        <h1 className="text-4xl font-serif font-bold mb-6">Draft not found</h1>
+        <p className="text-muted-foreground mb-8">
+          This draft may have already been submitted or discarded.
+        </p>
+        <Link href="/profile">
+          <Button className="rounded-none uppercase tracking-widest h-12 px-8">
+            Back to profile
+          </Button>
+        </Link>
+      </div>
+    );
+  }
 
   if (!user?.authenticated) {
     return (
@@ -203,6 +253,41 @@ export default function SubmitCommit() {
         description: "Wait for the upload to finish before dropping your Note.",
         variant: "destructive",
       });
+      return;
+    }
+    if (isEditing && editingDraft) {
+      const instrumentType =
+        (values.draftInstrumentType ?? "").trim() || editingDraft.instrumentType;
+      const { draftInstrumentType: _ignored3, ...rest } = values;
+      void _ignored3;
+      updateDraftMutation.mutate(
+        {
+          draftId: editingDraft.id,
+          data: {
+            ...rest,
+            instrumentType,
+            audioObjectPath: objectPath,
+            overlayOffsetSeconds: overlayOffset,
+          },
+        },
+        {
+          onSuccess: () => {
+            toast({
+              title: "Draft updated",
+              description: "Your changes have been saved.",
+            });
+            queryClient.invalidateQueries({ queryKey: getListMyDraftsQueryKey() });
+            setLocation(`/profile`);
+          },
+          onError: (err) => {
+            toast({
+              title: "Couldn't save changes",
+              description: err.message,
+              variant: "destructive",
+            });
+          },
+        },
+      );
       return;
     }
     if (!song.currentRound) {
@@ -287,13 +372,13 @@ export default function SubmitCommit() {
     <div className="container mx-auto px-6 py-12 max-w-4xl">
       <div className="mb-8">
         <Link
-          href={`/songs/${slug}`}
+          href={isEditing ? "/profile" : `/songs/${slug}`}
           className="text-muted-foreground hover:text-foreground text-xs uppercase tracking-widest mb-3 inline-flex items-center gap-2"
         >
-          ← Back to {song.title}
+          ← {isEditing ? "Back to profile" : `Back to ${song.title}`}
         </Link>
         <h1 className="text-4xl md:text-5xl font-serif font-bold tracking-tighter mb-2">
-          Upload a Note
+          {isEditing ? "Edit your draft" : "Upload a Note"}
         </h1>
         {song.currentRound ? (
           <div className="text-sm text-primary">
@@ -334,7 +419,46 @@ export default function SubmitCommit() {
 
         {/* Step 2 — Layer audio */}
         <Section number={2} title="Layer your audio">
-          {!audioFile ? (
+          {!audioFile && isEditing && objectPath ? (
+            <div className="border border-border p-4 bg-background flex items-center gap-3">
+              <FileAudio className="w-6 h-6 text-primary" />
+              <div className="flex-1 min-w-0">
+                <div className="font-bold truncate">Current audio saved</div>
+                <div className="text-xs text-muted-foreground">
+                  Keep this file or upload a replacement below.
+                </div>
+              </div>
+              <label className="relative inline-block">
+                <input
+                  type="file"
+                  accept="audio/*,.wav,.flac,.aiff,.aif,.mp3,.m4a,.ogg,.opus,.aac,.wma"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 60 * 1024 * 1024) {
+                      toast({
+                        title: "File too large",
+                        description: `Max 60 MB. Yours is ${(file.size / (1024 * 1024)).toFixed(1)} MB.`,
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    setObjectPath(null);
+                    setAudioFile(file);
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-none uppercase tracking-widest text-[10px] h-9 pointer-events-none"
+                >
+                  Replace audio
+                </Button>
+              </label>
+            </div>
+          ) : !audioFile ? (
             <div className="border-2 border-dashed border-border p-10 text-center relative hover:border-primary/50 transition-colors">
               <input
                 type="file"
@@ -584,25 +708,39 @@ export default function SubmitCommit() {
                 disabled={
                   !objectPath ||
                   submitMutation.isPending ||
-                  draftMutation.isPending
+                  draftMutation.isPending ||
+                  updateDraftMutation.isPending ||
+                  isUploading
                 }
               >
-                {noActiveRound
+                {isEditing
+                  ? updateDraftMutation.isPending
+                    ? "Saving changes…"
+                    : "Save changes"
+                  : noActiveRound
                   ? draftMutation.isPending
                     ? "Saving draft…"
                     : "Save as draft"
                   : submitMutation.isPending
                   ? "Dropping…"
                   : "Drop this Note"}
-                {!submitMutation.isPending && !draftMutation.isPending && (
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                )}
+                {!submitMutation.isPending &&
+                  !draftMutation.isPending &&
+                  !updateDraftMutation.isPending && (
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  )}
               </Button>
-              {noActiveRound && (
+              {!isEditing && noActiveRound && (
                 <p className="text-xs text-muted-foreground text-center">
                   No round is open right now — your Note is held as a draft and
                   shows up on your profile so you can submit it the moment
                   curators reopen the song.
+                </p>
+              )}
+              {isEditing && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Editing a saved draft — submit it from your profile when a
+                  matching round is open.
                 </p>
               )}
             </form>

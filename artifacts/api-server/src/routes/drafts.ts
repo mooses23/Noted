@@ -36,6 +36,49 @@ const CreateDraftBody = z.object({
   confirmedRightsGrant: z.boolean(),
 });
 
+const UpdateDraftBody = z.object({
+  title: z.string().min(1).max(120).optional(),
+  note: z.string().max(500).nullable().optional(),
+  instrumentType: z.string().min(1).optional(),
+  audioObjectPath: z.string().min(1).optional(),
+  overlayOffsetSeconds: z.number().min(0).optional(),
+  displayNameOverride: z.string().optional(),
+  socialHandle: z.string().optional(),
+});
+
+async function validateAudioObjectPath(
+  songId: string,
+  audioObjectPath: string,
+): Promise<string | null> {
+  const draftPrefix = `/objects/songs/${songId}/drafts/commits/`;
+  const roundPrefix = `/objects/songs/${songId}/rounds/`;
+  if (
+    !audioObjectPath.startsWith(draftPrefix) &&
+    !audioObjectPath.startsWith(roundPrefix)
+  ) {
+    return "audioObjectPath must be an upload for this song.";
+  }
+  try {
+    const objectFile = await objectStorage.getObjectEntityFile(audioObjectPath);
+    const [meta] = await objectFile.getMetadata();
+    const size =
+      typeof meta.size === "string" ? parseInt(meta.size, 10) : Number(meta.size ?? 0);
+    const contentType = String(meta.contentType ?? "");
+    if (!size || size > MAX_COMMIT_AUDIO_BYTES) {
+      return `Audio file too large. Max ${MAX_COMMIT_AUDIO_BYTES} bytes.`;
+    }
+    if (!ALLOWED_COMMIT_AUDIO_PREFIXES.some((p) => contentType.startsWith(p))) {
+      return "Uploaded file must be an audio/* content type.";
+    }
+  } catch (err) {
+    if (err instanceof ObjectNotFoundError) {
+      return "Uploaded audio object not found.";
+    }
+    throw err;
+  }
+  return null;
+}
+
 function eligibleRoundFor(
   draft: CommitDraft,
   rounds: Round[],
@@ -138,44 +181,10 @@ router.post(
       return;
     }
 
-    // Audio must be uploaded to either this song's draft prefix OR an open
-    // round prefix on this song (e.g. user uploaded under a round that just
-    // closed). Both keep the audio scoped to the song.
-    const draftPrefix = `/objects/songs/${song.id}/drafts/commits/`;
-    const roundPrefix = `/objects/songs/${song.id}/rounds/`;
-    if (
-      !body.audioObjectPath.startsWith(draftPrefix) &&
-      !body.audioObjectPath.startsWith(roundPrefix)
-    ) {
-      res.status(400).json({
-        error: "audioObjectPath must be an upload for this song.",
-      });
+    const audioErr = await validateAudioObjectPath(song.id, body.audioObjectPath);
+    if (audioErr) {
+      res.status(400).json({ error: audioErr });
       return;
-    }
-    try {
-      const objectFile = await objectStorage.getObjectEntityFile(body.audioObjectPath);
-      const [meta] = await objectFile.getMetadata();
-      const size =
-        typeof meta.size === "string" ? parseInt(meta.size, 10) : Number(meta.size ?? 0);
-      const contentType = String(meta.contentType ?? "");
-      if (!size || size > MAX_COMMIT_AUDIO_BYTES) {
-        res.status(400).json({
-          error: `Audio file too large. Max ${MAX_COMMIT_AUDIO_BYTES} bytes.`,
-        });
-        return;
-      }
-      if (!ALLOWED_COMMIT_AUDIO_PREFIXES.some((p) => contentType.startsWith(p))) {
-        res.status(400).json({
-          error: "Uploaded file must be an audio/* content type.",
-        });
-        return;
-      }
-    } catch (err) {
-      if (err instanceof ObjectNotFoundError) {
-        res.status(400).json({ error: "Uploaded audio object not found." });
-        return;
-      }
-      throw err;
     }
 
     if (body.displayNameOverride || body.socialHandle) {
@@ -214,6 +223,97 @@ router.post(
       .where(and(eq(roundsTable.songId, song.id), eq(roundsTable.status, "open")));
 
     res.json(toDraft(created!, song, eligibleRoundFor(created!, openRounds)));
+  },
+);
+
+router.patch(
+  "/commits/drafts/:draftId",
+  requireAuth,
+  async (req: Request, res: Response) => {
+    const profile = (req as Request & { profile: { id: string } }).profile;
+    const draftId = req.params.draftId as string;
+    const parsed = UpdateDraftBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Invalid body", details: parsed.error.issues });
+      return;
+    }
+    const body = parsed.data;
+
+    const [existing] = await db
+      .select()
+      .from(commitDraftsTable)
+      .where(eq(commitDraftsTable.id, draftId))
+      .limit(1);
+    if (!existing || existing.contributorId !== profile.id) {
+      res.status(404).json({ error: "Draft not found" });
+      return;
+    }
+
+    // Only re-validate audio when the user is actually replacing it.
+    if (
+      body.audioObjectPath !== undefined &&
+      body.audioObjectPath !== existing.audioFileUrl
+    ) {
+      const audioErr = await validateAudioObjectPath(
+        existing.songId,
+        body.audioObjectPath,
+      );
+      if (audioErr) {
+        res.status(400).json({ error: audioErr });
+        return;
+      }
+    }
+
+    if (body.displayNameOverride || body.socialHandle) {
+      await db
+        .update(profilesTable)
+        .set({
+          ...(body.displayNameOverride
+            ? { displayName: body.displayNameOverride }
+            : {}),
+          ...(body.socialHandle ? { socialHandle: body.socialHandle } : {}),
+          updatedAt: new Date(),
+        })
+        .where(eq(profilesTable.id, profile.id));
+    }
+
+    const [updated] = await db
+      .update(commitDraftsTable)
+      .set({
+        ...(body.title !== undefined ? { title: body.title } : {}),
+        ...(body.note !== undefined ? { note: body.note } : {}),
+        ...(body.instrumentType !== undefined
+          ? { instrumentType: body.instrumentType }
+          : {}),
+        ...(body.audioObjectPath !== undefined
+          ? { audioFileUrl: body.audioObjectPath }
+          : {}),
+        ...(body.overlayOffsetSeconds !== undefined
+          ? { overlayOffsetSeconds: body.overlayOffsetSeconds }
+          : {}),
+        ...(body.displayNameOverride !== undefined
+          ? { displayNameOverride: body.displayNameOverride }
+          : {}),
+        ...(body.socialHandle !== undefined
+          ? { socialHandle: body.socialHandle }
+          : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(commitDraftsTable.id, draftId))
+      .returning();
+
+    const [song] = await db
+      .select()
+      .from(songsTable)
+      .where(eq(songsTable.id, updated!.songId))
+      .limit(1);
+
+    const openRounds = await db
+      .select()
+      .from(roundsTable)
+      .where(and(eq(roundsTable.songId, updated!.songId), eq(roundsTable.status, "open")));
+
+    res.json(toDraft(updated!, song!, eligibleRoundFor(updated!, openRounds)));
   },
 );
 

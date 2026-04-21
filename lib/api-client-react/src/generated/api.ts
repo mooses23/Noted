@@ -60,6 +60,7 @@ import type {
   SongFile,
   SubmitCommitBody,
   SubmitDraftBody,
+  UpdateDraftBody,
   UpdateRoundBody,
   UpdateSongBody,
   UpdateSongCreditBody,
@@ -2320,6 +2321,93 @@ export const useCreateDraft = <
   TContext
 > => {
   return useMutation(getCreateDraftMutationOptions(options));
+};
+
+/**
+ * @summary Edit a saved Note draft (any subset of fields)
+ */
+export const getUpdateDraftUrl = (draftId: string) => {
+  return `/api/commits/drafts/${draftId}`;
+};
+
+export const updateDraft = async (
+  draftId: string,
+  updateDraftBody: UpdateDraftBody,
+  options?: RequestInit,
+): Promise<CommitDraft> => {
+  return customFetch<CommitDraft>(getUpdateDraftUrl(draftId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateDraftBody),
+  });
+};
+
+export const getUpdateDraftMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateDraft>>,
+    TError,
+    { draftId: string; data: BodyType<UpdateDraftBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateDraft>>,
+  TError,
+  { draftId: string; data: BodyType<UpdateDraftBody> },
+  TContext
+> => {
+  const mutationKey = ["updateDraft"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateDraft>>,
+    { draftId: string; data: BodyType<UpdateDraftBody> }
+  > = (props) => {
+    const { draftId, data } = props ?? {};
+
+    return updateDraft(draftId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateDraftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateDraft>>
+>;
+export type UpdateDraftMutationBody = BodyType<UpdateDraftBody>;
+export type UpdateDraftMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Edit a saved Note draft (any subset of fields)
+ */
+export const useUpdateDraft = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateDraft>>,
+    TError,
+    { draftId: string; data: BodyType<UpdateDraftBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateDraft>>,
+  TError,
+  { draftId: string; data: BodyType<UpdateDraftBody> },
+  TContext
+> => {
+  return useMutation(getUpdateDraftMutationOptions(options));
 };
 
 export const getDeleteDraftUrl = (draftId: string) => {

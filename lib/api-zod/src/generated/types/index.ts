@@ -79,6 +79,7 @@ export * from "./songStatus";
 export * from "./submitCommitBody";
 export * from "./submitDraftBody";
 export * from "./topContributor";
+export * from "./updateDraftBody";
 export * from "./updateRoundBody";
 export * from "./updateRoundBodyKind";
 export * from "./updateRoundBodyMergeBehavior";
