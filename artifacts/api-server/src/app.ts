@@ -33,14 +33,19 @@ app.use(
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
+const isProduction = process.env.NODE_ENV === "production";
 const corsAllowlist = (process.env.ALLOWED_ORIGINS ?? "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
-const devDomain = process.env.REPLIT_DEV_DOMAIN
-  ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-  : null;
-if (devDomain && !corsAllowlist.includes(devDomain)) corsAllowlist.push(devDomain);
+// Replit dev-domain fallback only applies outside production. In production
+// the allowlist is driven entirely by ALLOWED_ORIGINS.
+if (!isProduction) {
+  const devDomain = process.env.REPLIT_DEV_DOMAIN
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+    : null;
+  if (devDomain && !corsAllowlist.includes(devDomain)) corsAllowlist.push(devDomain);
+}
 
 app.use(
   cors({
