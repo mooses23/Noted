@@ -6,8 +6,10 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
   getListMyNotificationsQueryKey,
+  listMyNotifications,
+  type NotificationFeed,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type UseQueryOptions } from "@tanstack/react-query";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,11 +32,19 @@ export function NotificationsBell() {
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
+  const queryKey = getListMyNotificationsQueryKey();
   const { data } = useListMyNotifications({
     query: {
+      queryKey,
+      queryFn: () => listMyNotifications(),
       refetchInterval: 30_000,
       staleTime: 15_000,
-    } as never,
+    } satisfies UseQueryOptions<
+      NotificationFeed,
+      unknown,
+      NotificationFeed,
+      typeof queryKey
+    >,
   });
 
   const items = data?.items ?? [];
