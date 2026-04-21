@@ -10,6 +10,7 @@ import votesRouter from "./votes";
 import versionsRouter from "./versions";
 import creditsRouter from "./credits";
 import commentsRouter from "./comments";
+import notificationsRouter from "./notifications";
 import statsRouter from "./stats";
 import adminRouter from "./admin";
 
@@ -26,6 +27,7 @@ router.use(votesRouter);
 router.use(versionsRouter);
 router.use(creditsRouter);
 router.use(commentsRouter);
+router.use(notificationsRouter);
 router.use(statsRouter);
 router.use("/admin", adminRouter);
 

@@ -11,6 +11,8 @@ import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuth } from "../lib/auth";
 import { toComment } from "../lib/shapes";
+import { notifyNewComment } from "../lib/notifications";
+import { logger } from "../lib/logger";
 import {
   checkRateLimit,
   COMMENT_POST_LIMITS,
@@ -89,7 +91,11 @@ router.post(
     }
 
     const [song] = await db
-      .select({ id: songsTable.id })
+      .select({
+        id: songsTable.id,
+        slug: songsTable.slug,
+        title: songsTable.title,
+      })
       .from(songsTable)
       .where(eq(songsTable.id, songId))
       .limit(1);
@@ -112,6 +118,22 @@ router.post(
       .from(profilesTable)
       .where(eq(profilesTable.id, profile.id))
       .limit(1);
+
+    // Fan out notifications best-effort. Never block the response.
+    notifyNewComment({
+      songId: song.id,
+      songSlug: song.slug,
+      songTitle: song.title,
+      commentId: created!.id,
+      commentBody: created!.body,
+      authorId: profile.id,
+      authorDisplayName: author!.displayName,
+    }).catch((err) => {
+      logger.warn(
+        { err, songId: song.id, commentId: created!.id },
+        "notifyNewComment failed",
+      );
+    });
 
     res.status(201).json(toComment(created!, author!));
   },

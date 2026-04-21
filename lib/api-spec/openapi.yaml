@@ -43,6 +43,41 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/CurrentUser" }
 
+  /me/notifications:
+    get:
+      operationId: listMyNotifications
+      tags: [notifications]
+      summary: Recent notifications for the current user (auth required)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NotificationFeed" }
+
+  /me/notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark every unread notification as read
+      responses:
+        "204":
+          description: Done
+
+  /me/notifications/{id}/read:
+    post:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark a single notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Done
+
   /songs:
     get:
       operationId: listSongs
@@ -1253,6 +1288,46 @@ components:
         body: { type: string }
         createdAt: { type: string, format: date-time }
         author: { $ref: "#/components/schemas/ContributorLite" }
+
+    NotificationItem:
+      type: object
+      required: [id, type, title, linkPath, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string }
+        title: { type: string }
+        body:
+          type: string
+          nullable: true
+        linkPath: { type: string }
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt: { type: string, format: date-time }
+        actor:
+          nullable: true
+          oneOf: [{ $ref: "#/components/schemas/ContributorLite" }]
+        songId:
+          type: string
+          format: uuid
+          nullable: true
+        songTitle:
+          type: string
+          nullable: true
+        commentId:
+          type: string
+          format: uuid
+          nullable: true
+
+    NotificationFeed:
+      type: object
+      required: [unreadCount, items]
+      properties:
+        unreadCount: { type: integer, minimum: 0 }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/NotificationItem" }
 
     PostCommentBody:
       type: object

@@ -34,6 +34,45 @@ export const GetCurrentUserResponse = zod.object({
 });
 
 /**
+ * @summary Recent notifications for the current user (auth required)
+ */
+export const listMyNotificationsResponseUnreadCountMin = 0;
+
+export const ListMyNotificationsResponse = zod.object({
+  unreadCount: zod.number().min(listMyNotificationsResponseUnreadCountMin),
+  items: zod.array(
+    zod.object({
+      id: zod.string().uuid(),
+      type: zod.string(),
+      title: zod.string(),
+      body: zod.string().nullish(),
+      linkPath: zod.string(),
+      readAt: zod.coerce.date().nullish(),
+      createdAt: zod.coerce.date(),
+      actor: zod
+        .object({
+          id: zod.string().uuid(),
+          displayName: zod.string(),
+          username: zod.string().nullish(),
+          avatarUrl: zod.string().nullish(),
+          socialHandle: zod.string().nullish(),
+        })
+        .nullish(),
+      songId: zod.string().uuid().nullish(),
+      songTitle: zod.string().nullish(),
+      commentId: zod.string().uuid().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary Mark a single notification as read
+ */
+export const MarkNotificationReadParams = zod.object({
+  id: zod.coerce.string().uuid(),
+});
+
+/**
  * @summary List songs
  */
 export const ListSongsQueryParams = zod.object({

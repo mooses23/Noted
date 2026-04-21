@@ -50,6 +50,8 @@ export * from "./listSongsParams";
 export * from "./listSongsStatus";
 export * from "./logDownload200";
 export * from "./logDownloadBody";
+export * from "./notificationFeed";
+export * from "./notificationItem";
 export * from "./postCommentBody";
 export * from "./profile";
 export * from "./publicStats";

@@ -426,6 +426,26 @@ export interface Comment {
   author: ContributorLite;
 }
 
+export interface NotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  body?: string | null;
+  linkPath: string;
+  readAt?: string | null;
+  createdAt: string;
+  actor?: ContributorLite | null;
+  songId?: string | null;
+  songTitle?: string | null;
+  commentId?: string | null;
+}
+
+export interface NotificationFeed {
+  /** @minimum 0 */
+  unreadCount: number;
+  items: NotificationItem[];
+}
+
 export interface PostCommentBody {
   /**
    * @minLength 1
