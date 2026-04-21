@@ -1,197 +1,286 @@
-import { Link } from "wouter";
-import { ArrowRight, Disc3, Users, PlayCircle, GitBranch, ShieldCheck } from "lucide-react";
-import { useGetFeaturedSong, useListRisingCommits, useGetPublicStats } from "@workspace/api-client-react";
-import { AudioPlayer } from "@/components/AudioPlayer";
-import { CommitAudioComparator } from "@/components/CommitAudioComparator";
+import { useMemo, useState } from "react";
+import { Link, useLocation } from "wouter";
+import { ArrowRight, Search, ShieldCheck } from "lucide-react";
+import {
+  useListRisingCommits,
+  useGetPublicStats,
+  useListSongs,
+} from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { CoverImage } from "@/components/CoverImage";
 
 export default function Home() {
-  const { data: featured, isLoading: isFeaturedLoading } = useGetFeaturedSong();
-  const { data: risingCommits, isLoading: isRisingLoading } = useListRisingCommits({ limit: 4 });
+  const { data: rising, isLoading: isRisingLoading } = useListRisingCommits({
+    limit: 6,
+  });
   const { data: stats } = useGetPublicStats();
+  const { data: songs } = useListSongs();
+  const [, setLocation] = useLocation();
+  const [query, setQuery] = useState("");
+  const [activeGenre, setActiveGenre] = useState<string | null>(null);
+
+  const genres = useMemo(() => {
+    if (stats?.genres?.length) {
+      return stats.genres
+        .filter((g) => g.songCount > 0)
+        .sort((a, b) => b.songCount - a.songCount)
+        .map((g) => g.genre);
+    }
+    const set = new Set<string>();
+    songs?.forEach((s) => s.genre && set.add(s.genre));
+    return Array.from(set);
+  }, [stats, songs]);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = query.trim();
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (activeGenre) params.set("genre", activeGenre);
+    setLocation(`/songs${params.toString() ? `?${params}` : ""}`);
+  };
 
   return (
     <div className="flex flex-col">
-      {/* Hero Section */}
-      <section className="relative min-h-[85vh] flex items-center justify-center border-b border-border overflow-hidden">
+      {/* Hero — minimal, focused on action */}
+      <section className="relative border-b border-border overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img 
-            src="/images/hero-studio.png" 
-            alt="Studio Background" 
-            className="w-full h-full object-cover opacity-20"
+          <img
+            src="/images/hero-studio.png"
+            alt=""
+            className="w-full h-full object-cover opacity-15"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/80 to-background" />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/85 to-background" />
         </div>
-
-        <div className="container relative z-10 mx-auto px-6 py-20 flex flex-col items-center text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 border border-primary/30 bg-primary/10 text-primary text-xs uppercase tracking-widest mb-8">
+        <div className="container relative z-10 mx-auto px-6 py-16 md:py-24 flex flex-col items-center text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 border border-primary/30 bg-primary/10 text-primary text-[10px] uppercase tracking-widest mb-6">
             <ShieldCheck className="w-3 h-3" />
-            Strictly Human-Made
+            Strictly human-made
           </div>
-          
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-serif font-bold tracking-tighter max-w-4xl leading-none mb-6">
-            The listeners <br/><span className="text-muted-foreground italic">become the band.</span>
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-serif font-bold tracking-tighter max-w-3xl leading-[1.05] mb-5">
+            Songs grow when you drop a&nbsp;<span className="text-primary italic">Note</span>.
           </h1>
-          
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-12 font-sans">
-            Noted is where songs grow in two phases. First the <strong className="text-foreground">structure</strong> — drums, bass, harmony, one round at a time. Then the <strong className="text-foreground">accents</strong> — claps, stabs, signature moments that make a song feel inevitable. No AI. Real hands on real instruments.
+          <p className="text-base md:text-lg text-muted-foreground max-w-xl mb-8 leading-relaxed">
+            Find a song-in-progress. Layer your sound. Get credited. No AI — real
+            humans, real instruments, one Note at a&nbsp;time.
           </p>
 
-          {isFeaturedLoading ? (
-            <div className="w-full max-w-3xl h-48 bg-card border border-border animate-pulse" />
-          ) : featured?.song ? (
-            <div className="w-full max-w-3xl bg-card border border-border p-6 md:p-8 text-left">
-              <div className="flex flex-col md:flex-row gap-8">
-                <CoverImage
-                  url={featured.song.coverImageUrl}
-                  alt={featured.song.title}
-                  className="w-32 h-32 md:w-48 md:h-48 border border-border flex-shrink-0 shadow-2xl"
-                  iconSize="w-12 h-12"
-                />
-                <div className="flex-1 min-w-0 flex flex-col">
-                  <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-primary mb-2">
-                    <Disc3 className="w-4 h-4" />
-                    <span>Featured Track</span>
-                  </div>
-                  <h2 className="text-3xl md:text-4xl font-serif font-bold mb-2 truncate">
-                    {featured.song.title}
-                  </h2>
-                  <p className="text-muted-foreground mb-4">
-                    Seed by {featured.song.creatorName} • {featured.song.genre} • {featured.song.bpm} BPM
-                  </p>
-                  
-                  {featured.song.currentRound ? (
-                    <div className="mb-6 p-4 border border-border bg-background">
-                      <div className="text-xs uppercase tracking-widest text-muted-foreground mb-1">Current Round</div>
-                      <div className="font-bold text-lg mb-2">Wanted: {featured.song.currentRound.allowedInstrumentType}</div>
-                      <div className="flex items-center gap-4">
-                        <Link href={`/songs/${featured.song.slug}/submit`}>
-                          <Button className="rounded-none uppercase tracking-widest text-xs px-8">Submit Layer</Button>
-                        </Link>
-                        <Link href={`/songs/${featured.song.slug}`} className="text-sm hover:text-primary transition-colors flex items-center gap-1">
-                          View details <ArrowRight className="w-4 h-4" />
-                        </Link>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mb-6">
-                      <Link href={`/songs/${featured.song.slug}`}>
-                        <Button variant="outline" className="rounded-none uppercase tracking-widest text-xs">View Track</Button>
-                      </Link>
-                    </div>
-                  )}
-
-                  {featured.song.currentVersion && (
-                    <AudioPlayer 
-                      url={featured.song.currentVersion.officialMixUrl}
-                      title="Current Mix"
-                      className="mt-auto border-none bg-background p-0"
-                    />
-                  )}
-                </div>
-              </div>
+          {/* Search */}
+          <form
+            onSubmit={handleSearch}
+            className="w-full max-w-xl flex items-stretch gap-0 mb-6"
+          >
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search songs, genres, artists…"
+                className="h-12 rounded-none bg-card border-border pl-9 focus-visible:ring-primary"
+              />
             </div>
-          ) : null}
-        </div>
-      </section>
+            <Button
+              type="submit"
+              className="h-12 rounded-none uppercase tracking-widest text-xs px-6"
+            >
+              Browse
+            </Button>
+          </form>
 
-      {/* Rising Commits Section */}
-      <section className="py-20 px-6 border-b border-border bg-card/50">
-        <div className="container mx-auto">
-          <div className="flex items-end justify-between mb-12">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-serif font-bold mb-2">Rising Commits</h2>
-              <p className="text-muted-foreground">The community's latest favored layers.</p>
-            </div>
-            <Link href="/commits" className="text-primary hover:text-primary/80 uppercase tracking-widest text-xs flex items-center gap-2 pb-2">
-              Browse all <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-
-          {isRisingLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[1, 2, 3, 4].map(i => <div key={i} className="h-32 bg-card border border-border animate-pulse" />)}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {risingCommits?.map(commit => (
-                <div key={commit.id} className="bg-card border border-border p-4 hover:border-primary/50 transition-colors">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="font-bold text-lg font-serif">
-                        <Link href={`/commits/${commit.id}`} className="hover:text-primary">{commit.title}</Link>
-                      </h3>
-                      <div className="text-sm text-muted-foreground">
-                        {commit.instrumentType} by {commit.contributor.displayName}
-                      </div>
-                    </div>
-                    <div className="text-xs px-2 py-1 bg-secondary text-secondary-foreground border border-border">
-                      {commit.voteCount} votes
-                    </div>
-                  </div>
-                  <div className="text-xs text-muted-foreground mb-4 uppercase tracking-wider">
-                    For <Link href={`/songs/${commit.songSlug}`} className="hover:text-foreground underline decoration-border">{commit.songTitle}</Link>
-                  </div>
-                  <CommitAudioComparator commit={commit} />
-                </div>
+          {/* Genre chips */}
+          {genres.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-2 max-w-2xl">
+              <button
+                onClick={() => setActiveGenre(null)}
+                className={`px-3 py-1 text-[10px] uppercase tracking-widest border transition-colors ${
+                  activeGenre === null
+                    ? "border-primary text-primary bg-primary/10"
+                    : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
+                }`}
+              >
+                All
+              </button>
+              {genres.slice(0, 12).map((g) => (
+                <button
+                  key={g}
+                  onClick={() =>
+                    setActiveGenre((curr) => (curr === g ? null : g))
+                  }
+                  className={`px-3 py-1 text-[10px] uppercase tracking-widest border transition-colors ${
+                    activeGenre === g
+                      ? "border-primary text-primary bg-primary/10"
+                      : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/40"
+                  }`}
+                >
+                  {g}
+                </button>
               ))}
             </div>
           )}
         </div>
       </section>
 
-      {/* Stats & Manifesto Teaser */}
-      <section className="py-20 px-6">
+      {/* Recent Hits */}
+      <section className="py-16 md:py-20 px-6 border-b border-border">
         <div className="container mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+          <div className="flex items-end justify-between mb-10">
             <div>
-              <h2 className="text-4xl font-serif font-bold mb-6">The Manifesto</h2>
-              <div className="prose prose-invert max-w-none text-muted-foreground mb-8">
-                <p className="text-xl leading-relaxed">
-                  We are drowning in algorithmic slop. Noted is a response. A sanctuary for real musicians.
-                </p>
-                <p>
-                  Every layer on this platform was played by human hands, sung by human voices, programmed by human minds. We believe music is a conversation, not a prompt. When you listen to a Noted track, you are hearing the collective effort of real people across the globe.
-                </p>
-              </div>
+              <h2 className="text-3xl md:text-4xl font-serif font-bold mb-1">Recent hits</h2>
+              <p className="text-muted-foreground text-sm">
+                Notes the community is rallying behind right now.
+              </p>
+            </div>
+            <Link
+              href="/commits"
+              className="text-primary hover:text-primary/80 uppercase tracking-widest text-xs flex items-center gap-2"
+            >
+              All Notes <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          {isRisingLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div
+                  key={i}
+                  className="h-44 bg-card border border-border animate-pulse"
+                />
+              ))}
+            </div>
+          ) : rising && rising.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {rising.map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/commits/${c.id}`}
+                  className="group bg-card border border-border p-5 flex flex-col gap-3 hover:border-primary/60 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+                        {c.instrumentType} · {c.songGenre || "Music"}
+                      </div>
+                      <div className="font-serif text-xl font-bold leading-tight truncate group-hover:text-primary">
+                        {c.title}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-center text-center px-2 py-1 border border-border bg-background flex-shrink-0">
+                      <span className="text-base font-mono font-bold tabular-nums leading-none">
+                        {c.voteCount}
+                      </span>
+                      <span className="text-[8px] uppercase tracking-widest text-muted-foreground mt-0.5">
+                        votes
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    by{" "}
+                    <span className="text-foreground">
+                      {c.contributor.displayName}
+                    </span>
+                  </div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-auto truncate">
+                    For {c.songTitle}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="border border-dashed border-border bg-card p-12 text-center text-muted-foreground">
+              No Notes have been dropped yet — be the first.
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* About + Stats */}
+      <section className="py-16 md:py-20 px-6">
+        <div className="container mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-primary mb-3">
+              About Noted
+            </div>
+            <h2 className="text-3xl md:text-4xl font-serif font-bold mb-5 leading-tight">
+              The listeners become the band.
+            </h2>
+            <div className="space-y-4 text-muted-foreground leading-relaxed">
+              <p>
+                Noted is a place where songs grow in two phases. First the{" "}
+                <strong className="text-foreground">structure</strong> — drums,
+                bass, harmony, one round at a time. Then the{" "}
+                <strong className="text-foreground">accents</strong> — the small
+                signature moments that make a song feel inevitable.
+              </p>
+              <p>
+                Every Note is a layer played by a real human. We do not allow
+                generative AI in submissions. We credit every contributor. You
+                always own your performance.
+              </p>
+            </div>
+            <div className="mt-8 flex gap-3">
               <Link href="/manifesto">
-                <Button className="rounded-none uppercase tracking-widest px-8">Read the full manifesto</Button>
+                <Button className="rounded-none uppercase tracking-widest text-xs px-6">
+                  Read the manifesto
+                </Button>
+              </Link>
+              <Link href="/songs">
+                <Button
+                  variant="outline"
+                  className="rounded-none uppercase tracking-widest text-xs px-6"
+                >
+                  Drop a Note
+                </Button>
               </Link>
             </div>
-            
-            <div className="bg-card border border-border p-8 md:p-12 flex flex-col justify-center">
-              <h3 className="text-xs uppercase tracking-widest text-muted-foreground mb-8">Platform Activity</h3>
-              <div className="grid grid-cols-2 gap-8">
-                <div>
-                  <div className="text-4xl md:text-5xl font-serif font-bold text-primary mb-2">
-                    {stats?.totalSongs || 0}
-                  </div>
-                  <div className="text-sm uppercase tracking-widest text-muted-foreground">Active Seeds</div>
-                </div>
-                <div>
-                  <div className="text-4xl md:text-5xl font-serif font-bold text-foreground mb-2">
-                    {stats?.totalCommits || 0}
-                  </div>
-                  <div className="text-sm uppercase tracking-widest text-muted-foreground">Human Commits</div>
-                </div>
-                <div>
-                  <div className="text-4xl md:text-5xl font-serif font-bold text-foreground mb-2">
-                    {stats?.totalVotes || 0}
-                  </div>
-                  <div className="text-sm uppercase tracking-widest text-muted-foreground">Votes Cast</div>
-                </div>
-                <div>
-                  <div className="text-4xl md:text-5xl font-serif font-bold text-foreground mb-2">
-                    {stats?.totalMergedContributors || 0}
-                  </div>
-                  <div className="text-sm uppercase tracking-widest text-muted-foreground">Credited Artists</div>
-                </div>
-              </div>
+          </div>
+
+          <div className="bg-card border border-border p-8 md:p-10 flex flex-col justify-center">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-6">
+              Platform activity
+            </div>
+            <div className="grid grid-cols-2 gap-8">
+              <Stat label="Active songs" value={stats?.totalSongs ?? 0} highlight />
+              <Stat label="Notes dropped" value={stats?.totalCommits ?? 0} />
+              <Stat label="Votes cast" value={stats?.totalVotes ?? 0} />
+              <Stat
+                label="Credited artists"
+                value={stats?.totalMergedContributors ?? 0}
+              />
             </div>
           </div>
         </div>
       </section>
     </div>
   );
+}
+
+function Stat({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: number;
+  highlight?: boolean;
+}) {
+  return (
+    <div>
+      <div
+        className={`text-4xl md:text-5xl font-serif font-bold tabular-nums mb-1 ${
+          highlight ? "text-primary" : "text-foreground"
+        }`}
+      >
+        {value}
+      </div>
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+        {label}
+      </div>
+    </div>
+  );
+}
+
+// Used in song search-by-genre filter (kept for completeness if revisited).
+export function _CoverPreview() {
+  return <CoverImage url={null} alt="" className="w-12 h-12" />;
 }

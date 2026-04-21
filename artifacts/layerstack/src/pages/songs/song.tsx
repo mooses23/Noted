@@ -1,28 +1,54 @@
+import { useState, useMemo } from "react";
 import { useParams, Link } from "wouter";
-import { useGetSongBySlug, useListCommitsForRound, getGetSongBySlugQueryKey, getListCommitsForRoundQueryKey, ListCommitsForRoundSort, useVoteOnCommit, useUnvoteCommit, useGetCurrentUser, useListVersionsForSong, getListVersionsForSongQueryKey } from "@workspace/api-client-react";
+import {
+  useGetSongBySlug,
+  useListCommitsForRound,
+  getGetSongBySlugQueryKey,
+  getListCommitsForRoundQueryKey,
+  ListCommitsForRoundSort,
+  useVoteOnCommit,
+  useUnvoteCommit,
+  useGetCurrentUser,
+  useListVersionsForSong,
+  getListVersionsForSongQueryKey,
+  useListCredits,
+  getListCreditsQueryKey,
+  type CommitSummary,
+} from "@workspace/api-client-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
-import { CommitAudioComparator } from "@/components/CommitAudioComparator";
+import { WaveformStack, type WaveformLayer } from "@/components/WaveformStack";
 import { Button } from "@/components/ui/button";
-import { Disc3, Download, Clock, ThumbsUp, FileAudio } from "lucide-react";
+import {
+  Download,
+  Clock,
+  ChevronUp,
+  FileAudio,
+  MessageSquare,
+} from "lucide-react";
 import { format } from "date-fns";
-import { storageUrl } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { CoverImage } from "@/components/CoverImage";
+import { storageUrl } from "@/lib/utils";
+
+const PAGE_SIZE = 5;
 
 export default function SongDetail() {
   const params = useParams();
   const slug = params.slug || "";
-  
-  const { data: song, isLoading: isSongLoading } = useGetSongBySlug(slug, { 
-    query: { enabled: !!slug, queryKey: getGetSongBySlugQueryKey(slug) } 
+
+  const { data: song, isLoading: isSongLoading } = useGetSongBySlug(slug, {
+    query: { enabled: !!slug, queryKey: getGetSongBySlugQueryKey(slug) },
   });
 
-
   if (isSongLoading) {
-    return <div className="container mx-auto px-6 py-12"><div className="h-96 bg-card border border-border animate-pulse" /></div>;
+    return (
+      <div className="container mx-auto px-6 py-12">
+        <div className="h-96 bg-card border border-border animate-pulse" />
+      </div>
+    );
   }
-  
+
   if (!song) {
     return <div className="container mx-auto px-6 py-12">Song not found</div>;
   }
@@ -30,48 +56,71 @@ export default function SongDetail() {
   return (
     <div className="flex flex-col">
       <section className="border-b border-border bg-card">
-        <div className="container mx-auto px-6 py-12 md:py-20 flex flex-col md:flex-row gap-8 lg:gap-16">
+        <div className="container mx-auto px-6 py-12 md:py-16 flex flex-col md:flex-row gap-8 lg:gap-12">
           <CoverImage
             url={song.coverImageUrl}
             alt={song.title}
-            className="w-48 h-48 md:w-64 md:h-64 border border-border shadow-2xl flex-shrink-0"
-            iconSize="w-16 h-16"
+            className="w-44 h-44 md:w-56 md:h-56 border border-border shadow-2xl flex-shrink-0"
+            iconSize="w-14 h-14"
           />
-          
+
           <div className="flex-1 min-w-0 flex flex-col justify-center">
-            <div className="text-xs uppercase tracking-widest text-primary mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span>{song.genre} • {song.bpm} BPM • {song.musicalKey} • {song.timeSignature || "4/4"}</span>
+            <div className="text-[10px] uppercase tracking-widest text-primary mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span>
+                {song.genre} · {song.bpm} BPM · {song.musicalKey} ·{" "}
+                {song.timeSignature || "4/4"}
+              </span>
               <span
-                className={`px-2 py-0.5 border text-[0.65rem] ${
+                className={`px-2 py-0.5 border text-[9px] ${
                   song.phase === "accents"
                     ? "border-primary/60 text-primary bg-primary/5"
                     : "border-foreground/40 text-foreground/80 bg-foreground/5"
                 }`}
-                title={
-                  song.phase === "accents"
-                    ? "The structure is locked. The community is now layering signature accents."
-                    : "The community is shaping the foundation: drums, bass, and harmony."
-                }
               >
                 Phase: {song.phase === "accents" ? "Accents" : "Structure"}
               </span>
             </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold tracking-tighter mb-4 truncate">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold tracking-tighter mb-3 truncate">
               {song.title}
             </h1>
-            <p className="text-lg text-muted-foreground mb-6">
-              Seed by {song.creatorName} • Started {format(new Date(song.createdAt), "MMM d, yyyy")}
+            <p className="text-base text-muted-foreground mb-5">
+              Seed by{" "}
+              <span className="text-foreground">{song.creatorName}</span> ·
+              Started {format(new Date(song.createdAt), "MMM d, yyyy")}
             </p>
-            <p className="max-w-2xl text-foreground mb-8">
+            <p className="max-w-2xl text-sm text-foreground/90 mb-6">
               {song.description || "A new seed song looking for contributors."}
             </p>
-            
+
+            <div className="flex flex-wrap items-center gap-3">
+              {song.currentRound ? (
+                <Link href={`/songs/${song.slug}/submit`}>
+                  <Button className="rounded-none uppercase tracking-widest text-xs h-11 px-6">
+                    Drop a Note
+                  </Button>
+                </Link>
+              ) : (
+                <span className="inline-flex items-center px-4 h-11 border border-border text-xs uppercase tracking-widest text-muted-foreground">
+                  No open round — check back soon
+                </span>
+              )}
+              {song.currentRound?.closesAt && (
+                <span className="text-xs text-muted-foreground uppercase tracking-widest flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  Closes{" "}
+                  {format(new Date(song.currentRound.closesAt), "MMM d, yyyy")}
+                </span>
+              )}
+            </div>
+
             {song.currentVersion && (
-              <div className="mt-auto">
-                <div className="text-xs uppercase tracking-widest text-muted-foreground mb-2">Current Official Mix (v{song.currentVersion.versionNumber})</div>
-                <AudioPlayer 
+              <div className="mt-6">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+                  Current mix · v{song.currentVersion.versionNumber}
+                </div>
+                <AudioPlayer
                   url={song.currentVersion.officialMixUrl}
-                  title={`${song.title} - v${song.currentVersion.versionNumber}`}
+                  title={`${song.title} — v${song.currentVersion.versionNumber}`}
                   artist="Noted Community"
                   className="bg-background border border-border"
                 />
@@ -83,186 +132,269 @@ export default function SongDetail() {
 
       <div className="container mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
         <div className="lg:col-span-2 space-y-12">
-          {/* Current Round */}
+          {/* Notes (was: Commits for current round) */}
           {song.currentRound ? (
             <section>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-serif font-bold">Current Round</h2>
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`px-3 py-1 border text-xs uppercase tracking-widest ${
-                      song.currentRound.kind === "accent"
-                        ? "bg-primary/10 text-primary border-primary/30"
-                        : "bg-foreground/5 text-foreground border-foreground/30"
-                    }`}
+              <div className="flex items-end justify-between mb-5">
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-serif font-bold">
+                    Notes for this round
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    Round {song.currentRound.roundNumber} · wanted{" "}
+                    <span className="text-foreground">
+                      {song.currentRound.allowedInstrumentType}
+                    </span>{" "}
+                    {song.currentRound.kind === "accent" && "(accent)"}
+                  </p>
+                </div>
+                <Link href={`/songs/${song.slug}/submit`}>
+                  <Button
+                    variant="outline"
+                    className="rounded-none uppercase tracking-widest text-xs h-9 px-4"
                   >
-                    {song.currentRound.kind === "accent" ? "Accent round" : "Structure round"}
-                  </div>
-                  <div className="px-3 py-1 bg-primary/10 text-primary border border-primary/30 text-xs uppercase tracking-widest">
-                    Open
-                  </div>
-                </div>
+                    + Drop a Note
+                  </Button>
+                </Link>
               </div>
-              <div className="bg-card border border-border p-6 md:p-8">
-                <h3 className="font-serif text-2xl font-bold mb-2">Round {song.currentRound.roundNumber}: {song.currentRound.title}</h3>
-                <p className="text-muted-foreground mb-2">
-                  {song.currentRound.description ||
-                    (song.currentRound.kind === "accent"
-                      ? `Add a ${song.currentRound.allowedInstrumentType} accent — a small signature moment that cuts through.`
-                      : `We are looking for a ${song.currentRound.allowedInstrumentType} layer to anchor the song.`)}
-                </p>
-                <p className="text-xs text-muted-foreground mb-6">
-                  {song.currentRound.mergeBehavior === "multi"
-                    ? "Multiple submissions can be selected and stacked into the next official mix."
-                    : "Curators will pick one submission to merge into the next official mix."}
-                </p>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-6 border-t border-border">
-                  <div className="flex-1">
-                    <div className="text-sm font-bold uppercase tracking-widest text-primary mb-1">
-                      Wanted: {song.currentRound.allowedInstrumentType}
-                    </div>
-                    {song.currentRound.closesAt && (
-                      <div className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        Closes {format(new Date(song.currentRound.closesAt), "MMM d, yyyy")}
-                      </div>
-                    )}
-                  </div>
-                  <Link href={`/songs/${song.slug}/submit`}>
-                    <Button className="rounded-none uppercase tracking-widest text-xs px-8 h-12 w-full sm:w-auto">
-                      {song.currentRound.kind === "accent" ? "Submit Accent" : "Submit Layer"}
-                    </Button>
-                  </Link>
-                </div>
-              </div>
+              <NotesList
+                roundId={song.currentRound.id}
+                baseUrl={song.currentVersion?.officialMixUrl || null}
+                baseLabel={
+                  song.currentVersion
+                    ? `${song.title} v${song.currentVersion.versionNumber}`
+                    : null
+                }
+              />
             </section>
           ) : (
             <section>
               <div className="p-8 border border-border bg-card text-center">
-                <h3 className="font-serif text-xl font-bold mb-2">No Active Round</h3>
+                <h3 className="font-serif text-xl font-bold mb-2">
+                  No active round
+                </h3>
                 <p className="text-muted-foreground">
                   {song.phase === "accents"
                     ? "The structure is locked. Curators are preparing the next accent round."
-                    : "Curators are reviewing commits or preparing to open the next structure round."}
+                    : "Curators are reviewing Notes or preparing the next structure round."}
                 </p>
               </div>
             </section>
           )}
 
-          {/* Version Story — full lifecycle history */}
-          <VersionStory songId={song.id} />
+          {/* Comments — placeholder for now (no API yet) */}
+          <section>
+            <h2 className="text-2xl font-serif font-bold mb-4 flex items-center gap-2">
+              <MessageSquare className="w-5 h-5" /> Comments
+            </h2>
+            <div className="bg-card border border-dashed border-border p-6 text-sm text-muted-foreground">
+              Comments are coming soon. For now, leave your feedback inside your
+              Note's curator note when you submit.
+            </div>
+          </section>
 
-          {/* Open Commits for Current Round */}
-          {song.currentRound && (
-            <section>
-              <h2 className="text-2xl font-serif font-bold mb-6 flex items-center gap-2">
-                {song.currentRound.kind === "accent" ? "Accent submissions" : "Submissions"}{" "}
-                <span className="text-muted-foreground font-sans text-sm font-normal">
-                  ({song.currentRound.commitCount || 0})
-                </span>
-              </h2>
-              <CommitsList
-                roundId={song.currentRound.id}
-                roundKind={song.currentRound.kind}
-              />
-            </section>
-          )}
+          <VersionStory songId={song.id} />
         </div>
 
-        <div className="space-y-12">
+        <div className="space-y-10">
+          <ArtistCredit
+            songId={song.id}
+            creatorName={song.creatorName}
+          />
+
           {/* Stems */}
           <section>
-            <h2 className="text-2xl font-serif font-bold mb-6">Downloads</h2>
-            <div className="bg-card border border-border p-6 space-y-4">
+            <h2 className="text-xl font-serif font-bold mb-4">Downloads</h2>
+            <div className="bg-card border border-border p-5 space-y-3">
               {song.stems.length > 0 ? (
-                song.stems.map(stem => (
-                  <div key={stem.id} className="flex items-center justify-between group">
+                song.stems.map((stem) => (
+                  <div
+                    key={stem.id}
+                    className="flex items-center justify-between group"
+                  >
                     <div className="flex items-center gap-3 min-w-0">
                       <FileAudio className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      <div className="truncate text-sm font-medium">{stem.label}</div>
+                      <div className="truncate text-sm font-medium">
+                        {stem.label}
+                      </div>
                     </div>
-                    <a href={`/api/storage${stem.fileUrl}`} download className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                    <a
+                      href={`/api/storage${stem.fileUrl}`}
+                      download
+                      className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                    >
                       <Download className="w-4 h-4" />
                     </a>
                   </div>
                 ))
               ) : (
-                <div className="text-sm text-muted-foreground">No stems available.</div>
+                <div className="text-sm text-muted-foreground">
+                  No stems available.
+                </div>
               )}
             </div>
           </section>
 
-          {/* Third-party Music Credits (per-song, data-driven) */}
           {song.thirdPartyCredits.length > 0 && (
             <section>
-              <h2 className="text-2xl font-serif font-bold mb-6">Music Credits</h2>
-              <div className="bg-card border border-border p-6 space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  This track includes third-party material used under the
-                  licenses noted below.
-                </p>
-                <ul className="space-y-2 text-sm">
-                  {song.thirdPartyCredits.map((credit) => (
-                    <li key={credit.id} className="leading-snug">
+              <h2 className="text-xl font-serif font-bold mb-4">
+                Music credits
+              </h2>
+              <div className="bg-card border border-border p-5 space-y-3 text-sm">
+                <ul className="space-y-2">
+                  {song.thirdPartyCredits.map((c) => (
+                    <li key={c.id} className="leading-snug">
                       <a
-                        href={credit.sourceUrl}
+                        href={c.sourceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="font-medium hover:text-primary underline-offset-2 hover:underline"
                       >
-                        &ldquo;{credit.title}&rdquo;
+                        &ldquo;{c.title}&rdquo;
                       </a>{" "}
                       <span className="text-muted-foreground">
-                        — {credit.author}
+                        — {c.author}
                       </span>{" "}
                       <a
-                        href={credit.licenseUrl}
+                        href={c.licenseUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs uppercase tracking-widest text-primary hover:underline"
+                        className="text-[10px] uppercase tracking-widest text-primary hover:underline"
                       >
-                        {credit.licenseName}
+                        {c.licenseName}
                       </a>
                     </li>
                   ))}
                 </ul>
-                <div className="pt-2 text-xs uppercase tracking-widest">
-                  <Link href="/licenses" className="text-primary hover:underline">
-                    All third-party licenses →
-                  </Link>
-                </div>
               </div>
             </section>
           )}
 
           {/* Stats */}
           <section>
-            <h2 className="text-2xl font-serif font-bold mb-6">Track Stats</h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-card border border-border p-4">
-                <div className="text-2xl font-serif font-bold text-primary mb-1">{song.totalCommits}</div>
-                <div className="text-xs uppercase tracking-widest text-muted-foreground">Commits</div>
-              </div>
-              <div className="bg-card border border-border p-4">
-                <div className="text-2xl font-serif font-bold text-foreground mb-1">{song.totalVotes}</div>
-                <div className="text-xs uppercase tracking-widest text-muted-foreground">Votes</div>
-              </div>
-              <div className="bg-card border border-border p-4">
-                <div className="text-2xl font-serif font-bold text-foreground mb-1">{song.versionCount}</div>
-                <div className="text-xs uppercase tracking-widest text-muted-foreground">Official Versions</div>
-              </div>
-              <div className="bg-card border border-border p-4">
-                <div className="text-2xl font-serif font-bold text-foreground mb-1">
-                  {song.structureRoundsCompleted}
-                  <span className="text-muted-foreground text-sm"> · {song.accentRoundsCompleted}</span>
-                </div>
-                <div className="text-xs uppercase tracking-widest text-muted-foreground">Structure · Accent</div>
-              </div>
+            <h2 className="text-xl font-serif font-bold mb-4">Track stats</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <Stat label="Notes" value={song.totalCommits} highlight />
+              <Stat label="Votes" value={song.totalVotes} />
+              <Stat label="Versions" value={song.versionCount} />
+              <Stat
+                label="Structure · Accent"
+                value={`${song.structureRoundsCompleted} · ${song.accentRoundsCompleted}`}
+              />
             </div>
           </section>
         </div>
       </div>
     </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: number | string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className="bg-card border border-border p-4">
+      <div
+        className={`text-2xl font-serif font-bold mb-1 ${
+          highlight ? "text-primary" : "text-foreground"
+        }`}
+      >
+        {value}
+      </div>
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function ArtistCredit({
+  songId,
+  creatorName,
+}: {
+  songId: string;
+  creatorName: string;
+}) {
+  const { data: credits } = useListCredits(songId, {
+    query: { enabled: !!songId, queryKey: getListCreditsQueryKey(songId) },
+  });
+
+  const unique = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        avatar: string | null;
+        roles: Set<string>;
+      }
+    >();
+    credits?.forEach((c) => {
+      const id = c.contributor.id;
+      const entry = map.get(id) || {
+        id,
+        name: c.contributor.displayName,
+        avatar: c.contributor.avatarUrl ?? null,
+        roles: new Set<string>(),
+      };
+      entry.roles.add(c.instrumentType);
+      map.set(id, entry);
+    });
+    return Array.from(map.values());
+  }, [credits]);
+
+  return (
+    <section>
+      <h2 className="text-xl font-serif font-bold mb-4">Artist credits</h2>
+      <div className="bg-card border border-border p-5">
+        <div className="flex items-center gap-3 pb-4 mb-4 border-b border-border">
+          <div className="w-9 h-9 bg-secondary border border-border flex items-center justify-center text-xs font-serif font-bold">
+            {creatorName.charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <div className="font-bold truncate">{creatorName}</div>
+            <div className="text-[10px] uppercase tracking-widest text-primary">
+              Seed creator
+            </div>
+          </div>
+        </div>
+        {unique.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No merged Notes yet. Be the first credit on this song.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {unique.map((u) => (
+              <li key={u.id} className="flex items-center gap-3">
+                {u.avatar ? (
+                  <img
+                    src={storageUrl(u.avatar)}
+                    alt={u.name}
+                    className="w-8 h-8 object-cover border border-border"
+                  />
+                ) : (
+                  <div className="w-8 h-8 bg-secondary border border-border flex items-center justify-center text-[10px] font-serif font-bold">
+                    {u.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium truncate">{u.name}</div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground truncate">
+                    {Array.from(u.roles).join(" · ")}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -272,84 +404,72 @@ function VersionStory({ songId }: { songId: string }) {
   });
 
   if (isLoading) {
-    return <div className="h-32 bg-card border border-border animate-pulse mb-12" />;
+    return <div className="h-32 bg-card border border-border animate-pulse" />;
   }
   if (!versions || versions.length === 0) return null;
 
   return (
-    <section className="mb-12">
-      <h2 className="text-2xl font-serif font-bold mb-6">Version Story</h2>
-      <div className="border-l-2 border-border pl-6 space-y-8">
-        {versions.map((v) => {
-          const accentMerges = v.merges.filter((m) => m.commitKind === "accent");
-          const structureMerges = v.merges.filter((m) => m.commitKind !== "accent");
-          return (
-            <div key={v.id} className="relative">
-              <div className="absolute -left-[31px] top-1.5 w-4 h-4 bg-background border-2 border-primary" />
-              <div className="flex items-center gap-3 flex-wrap mb-2">
-                <span className="font-serif text-xl font-bold">{v.title}</span>
-                {v.isCurrent && (
-                  <span className="text-[0.65rem] uppercase tracking-widest px-2 py-0.5 bg-primary text-primary-foreground">
-                    Current
-                  </span>
-                )}
-              </div>
-              {v.description && (
-                <p className="text-sm text-muted-foreground mb-3">{v.description}</p>
-              )}
-              {v.merges.length === 0 ? (
-                <div className="text-xs text-muted-foreground italic">Seed version — no merged contributions yet.</div>
-              ) : (
-                <div className="space-y-2">
-                  {structureMerges.length > 0 && (
-                    <div>
-                      <div className="text-[0.65rem] uppercase tracking-widest text-foreground/60 mb-1">
-                        Structure
-                      </div>
-                      <ul className="space-y-1">
-                        {structureMerges.map((m) => (
-                          <li key={m.id} className="text-sm flex items-center gap-2 flex-wrap">
-                            <span className="font-bold">{m.commitTitle}</span>
-                            <span className="text-muted-foreground">
-                              · {m.instrumentType} · {m.contributor.displayName}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {accentMerges.length > 0 && (
-                    <div>
-                      <div className="text-[0.65rem] uppercase tracking-widest text-primary mb-1">
-                        Accents ({accentMerges.length})
-                      </div>
-                      <ul className="space-y-1">
-                        {accentMerges.map((m) => (
-                          <li key={m.id} className="text-sm flex items-center gap-2 flex-wrap">
-                            <span className="font-bold">{m.commitTitle}</span>
-                            <span className="text-muted-foreground">
-                              · {m.contributor.displayName}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
+    <section>
+      <h2 className="text-2xl font-serif font-bold mb-5">Version story</h2>
+      <div className="border-l-2 border-border pl-6 space-y-7">
+        {versions.map((v) => (
+          <div key={v.id} className="relative">
+            <div className="absolute -left-[31px] top-1.5 w-4 h-4 bg-background border-2 border-primary" />
+            <div className="flex items-center gap-3 flex-wrap mb-2">
+              <span className="font-serif text-xl font-bold">{v.title}</span>
+              {v.isCurrent && (
+                <span className="text-[10px] uppercase tracking-widest px-2 py-0.5 bg-primary text-primary-foreground">
+                  Current
+                </span>
               )}
             </div>
-          );
-        })}
+            {v.description && (
+              <p className="text-sm text-muted-foreground mb-3">
+                {v.description}
+              </p>
+            )}
+            {v.merges.length === 0 ? (
+              <div className="text-xs text-muted-foreground italic">
+                Seed version — no merged Notes yet.
+              </div>
+            ) : (
+              <ul className="space-y-1 text-sm">
+                {v.merges.map((m) => (
+                  <li key={m.id} className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold">{m.commitTitle}</span>
+                    <span className="text-muted-foreground">
+                      · {m.instrumentType} · {m.contributor.displayName}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
       </div>
     </section>
   );
 }
 
-function CommitsList({ roundId, roundKind }: { roundId: string; roundKind: string }) {
-  const params = { sort: ListCommitsForRoundSort.top };
+function NotesList({
+  roundId,
+  baseUrl,
+  baseLabel,
+}: {
+  roundId: string;
+  baseUrl: string | null;
+  baseLabel: string | null;
+}) {
+  const [sort, setSort] = useState<ListCommitsForRoundSort>(
+    ListCommitsForRoundSort.top,
+  );
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  const params = { sort };
   const queryKey = getListCommitsForRoundQueryKey(roundId, params);
   const { data: commits, isLoading } = useListCommitsForRound(roundId, params, {
-    query: { enabled: !!roundId, queryKey }
+    query: { enabled: !!roundId, queryKey },
   });
   const { data: user } = useGetCurrentUser();
   const { toast } = useToast();
@@ -359,107 +479,223 @@ function CommitsList({ roundId, roundKind }: { roundId: string; roundKind: strin
 
   const toggleVote = (commitId: string, hasVoted: boolean) => {
     if (!user?.authenticated) {
-      toast({ title: "Sign in required", description: "You must be signed in to vote.", variant: "destructive" });
+      toast({
+        title: "Sign in required",
+        description: "Sign in to vote on a Note.",
+        variant: "destructive",
+      });
       return;
     }
     const mutation = hasVoted ? unvoteMutation : voteMutation;
-    mutation.mutate({ commitId }, {
-      onSuccess: (res) => {
-        queryClient.setQueryData<typeof commits>(queryKey, (old) =>
-          old?.map((c) => (c.id === commitId ? { ...c, hasVoted: !hasVoted, voteCount: res.voteCount } : c)),
-        );
+    mutation.mutate(
+      { commitId },
+      {
+        onSuccess: (res) => {
+          queryClient.setQueryData<typeof commits>(queryKey, (old) =>
+            old?.map((c) =>
+              c.id === commitId
+                ? { ...c, hasVoted: !hasVoted, voteCount: res.voteCount }
+                : c,
+            ),
+          );
+        },
+        onError: (err) => {
+          toast({
+            title: "Vote failed",
+            description: err.message,
+            variant: "destructive",
+          });
+        },
       },
-      onError: (err) => {
-        toast({ title: "Vote failed", description: err.message, variant: "destructive" });
-      },
-    });
+    );
   };
 
-  if (isLoading) return <div className="space-y-4">{[1,2,3].map(i => <div key={i} className="h-24 bg-card border border-border animate-pulse" />)}</div>;
-  if (!commits?.length) return <div className="p-8 text-center border border-border bg-card text-muted-foreground">No submissions yet. Be the first!</div>;
-
-  if (roundKind === "accent") {
+  if (isLoading) {
     return (
-      <div className="flex flex-wrap gap-2">
-        {commits.map((commit) => {
-          const isOwner = !!user?.profile?.id && user.profile.id === commit.contributorId;
-          const isPending =
-            (voteMutation.isPending || unvoteMutation.isPending) &&
-            (voteMutation.variables?.commitId === commit.id ||
-              unvoteMutation.variables?.commitId === commit.id);
-          return (
-            <div
-              key={commit.id}
-              className="border border-border bg-card hover:border-primary/40 transition-colors px-3 py-2 flex items-center gap-3 group"
-            >
-              <AudioPlayer
-                url={commit.audioFileUrl}
-                title={commit.title}
-                artist={commit.contributor.displayName}
-                compact
-                className="bg-transparent border-0"
-              />
-              <div className="min-w-0 max-w-[180px]">
-                <Link
-                  href={`/commits/${commit.id}`}
-                  className="block text-sm font-bold truncate hover:text-primary"
-                >
-                  {commit.title}
-                </Link>
-                <div className="text-[0.65rem] uppercase tracking-widest text-muted-foreground truncate">
-                  {commit.contributor.displayName}
-                </div>
-              </div>
-              <Button
-                variant={commit.hasVoted ? "default" : "outline"}
-                size="sm"
-                className="rounded-none uppercase tracking-widest text-xs h-8 px-2 flex items-center gap-1 flex-shrink-0"
-                onClick={() => toggleVote(commit.id, !!commit.hasVoted)}
-                disabled={isOwner || isPending}
-                title={isOwner ? "You can't vote on your own accent" : ""}
-              >
-                <ThumbsUp className={`w-3 h-3 ${commit.hasVoted ? "fill-current" : ""}`} />
-                <span className="font-mono">{commit.voteCount}</span>
-              </Button>
-            </div>
-          );
-        })}
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="h-20 bg-card border border-border animate-pulse"
+          />
+        ))}
       </div>
     );
   }
 
+  if (!commits?.length) {
+    return (
+      <div className="p-8 text-center border border-dashed border-border bg-card text-muted-foreground">
+        No Notes have been dropped yet. Be the first.
+      </div>
+    );
+  }
+
+  const visible = commits.slice(0, pageSize);
+  const hasMore = commits.length > pageSize;
+
   return (
-    <div className="space-y-4">
-      {commits.map(commit => {
-        const isOwner = !!user?.profile?.id && user.profile.id === commit.contributorId;
-        const isPending = (voteMutation.isPending || unvoteMutation.isPending) && (voteMutation.variables?.commitId === commit.id || unvoteMutation.variables?.commitId === commit.id);
-        return (
-          <div key={commit.id} className="bg-card border border-border p-4 flex flex-col gap-4">
-            <div className="flex justify-between items-start gap-4">
-              <div className="min-w-0">
-                <h4 className="font-bold font-serif mb-1">
-                  <Link href={`/commits/${commit.id}`} className="hover:text-primary">{commit.title}</Link>
-                </h4>
-                <div className="text-sm text-muted-foreground flex items-center gap-2">
-                  <span>By {commit.contributor.displayName}</span>
-                </div>
-              </div>
-              <Button
-                variant={commit.hasVoted ? "default" : "outline"}
-                size="sm"
-                className="rounded-none uppercase tracking-widest text-xs h-9 px-3 flex items-center gap-2 flex-shrink-0"
-                onClick={() => toggleVote(commit.id, !!commit.hasVoted)}
-                disabled={isOwner || isPending}
-                title={isOwner ? "You can't vote on your own commit" : ""}
-              >
-                <ThumbsUp className={`w-3 h-3 ${commit.hasVoted ? "fill-current" : ""}`} />
-                <span className="font-mono">{commit.voteCount}</span>
-              </Button>
+    <div className="space-y-3">
+      {/* Sort tabs */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1 border border-border bg-background">
+          {(
+            [
+              { v: ListCommitsForRoundSort.top, label: "Top" },
+              { v: ListCommitsForRoundSort.newest, label: "Newest" },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.v}
+              onClick={() => setSort(opt.v)}
+              className={`px-3 py-1.5 text-[10px] uppercase tracking-widest transition-colors ${
+                sort === opt.v
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+          {commits.length} Note{commits.length === 1 ? "" : "s"}
+        </div>
+      </div>
+
+      {visible.map((commit) => (
+        <NoteRow
+          key={commit.id}
+          commit={commit}
+          baseUrl={baseUrl}
+          baseLabel={baseLabel}
+          isOwner={!!user?.profile?.id && user.profile.id === commit.contributorId}
+          isExpanded={expanded === commit.id}
+          onToggleExpand={() =>
+            setExpanded((e) => (e === commit.id ? null : commit.id))
+          }
+          onVote={() => toggleVote(commit.id, !!commit.hasVoted)}
+          isPending={
+            (voteMutation.isPending || unvoteMutation.isPending) &&
+            (voteMutation.variables?.commitId === commit.id ||
+              unvoteMutation.variables?.commitId === commit.id)
+          }
+        />
+      ))}
+
+      {hasMore && (
+        <div className="pt-3 text-center">
+          <Button
+            variant="outline"
+            onClick={() => setPageSize((s) => s + PAGE_SIZE)}
+            className="rounded-none uppercase tracking-widest text-xs h-10 px-6"
+          >
+            Load more Notes
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NoteRow({
+  commit,
+  baseUrl,
+  baseLabel,
+  isOwner,
+  isExpanded,
+  onToggleExpand,
+  onVote,
+  isPending,
+}: {
+  commit: CommitSummary;
+  baseUrl: string | null;
+  baseLabel: string | null;
+  isOwner: boolean;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onVote: () => void;
+  isPending: boolean;
+}) {
+  const layers = useMemo<WaveformLayer[]>(() => {
+    const out: WaveformLayer[] = [];
+    if (baseUrl) {
+      out.push({
+        id: `${commit.id}-base`,
+        label: baseLabel || "Base",
+        source: baseUrl,
+        isBase: true,
+      });
+    }
+    out.push({
+      id: `${commit.id}-overlay`,
+      label: commit.title,
+      source: commit.audioFileUrl,
+    });
+    return out;
+  }, [commit.id, commit.audioFileUrl, commit.title, baseUrl, baseLabel]);
+
+  return (
+    <div className="bg-card border border-border">
+      <div className="flex items-stretch">
+        {/* Vote column */}
+        <button
+          onClick={onVote}
+          disabled={isOwner || isPending}
+          title={isOwner ? "You can't vote on your own Note" : ""}
+          className={`flex flex-col items-center justify-center px-3 py-3 border-r border-border w-16 flex-shrink-0 transition-colors ${
+            commit.hasVoted
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:text-foreground hover:bg-background"
+          } disabled:opacity-50 disabled:hover:bg-transparent`}
+        >
+          <ChevronUp
+            className={`w-5 h-5 ${commit.hasVoted ? "fill-current" : ""}`}
+          />
+          <span className="text-base font-mono font-bold tabular-nums leading-none mt-0.5">
+            {commit.voteCount}
+          </span>
+          <span className="text-[8px] uppercase tracking-widest mt-1">
+            {commit.hasVoted ? "Voted" : "Vote"}
+          </span>
+        </button>
+
+        {/* Body */}
+        <button
+          onClick={onToggleExpand}
+          className="flex-1 min-w-0 px-4 py-3 text-left flex items-center justify-between gap-3 hover:bg-background transition-colors"
+        >
+          <div className="min-w-0">
+            <div className="font-serif font-bold truncate">{commit.title}</div>
+            <div className="text-xs text-muted-foreground truncate">
+              {commit.instrumentType} · by{" "}
+              <span className="text-foreground">
+                {commit.contributor.displayName}
+              </span>
             </div>
-            <CommitAudioComparator commit={commit} />
           </div>
-        );
-      })}
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground flex-shrink-0">
+            {isExpanded ? "Hide" : "Listen"}
+          </div>
+        </button>
+      </div>
+
+      {isExpanded && (
+        <div className="border-t border-border p-3 bg-background">
+          <WaveformStack layers={layers} rowHeight={48} />
+          <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-widest">
+            <Link
+              href={`/commits/${commit.id}`}
+              className="text-primary hover:underline"
+            >
+              Open Note details →
+            </Link>
+            <span className="text-muted-foreground">
+              {format(new Date(commit.createdAt), "MMM d, yyyy")}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
