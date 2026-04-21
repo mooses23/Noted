@@ -325,7 +325,6 @@ router.patch("/commits/:commitId/status", async (req: Request, res: Response) =>
       commitId: row.commit.id,
       contributorId: row.commit.contributorId,
       commitTitle: row.commit.title,
-      songSlug: row.song.slug,
       songTitle: row.song.title,
       songId: row.song.id,
       status,
@@ -641,11 +640,9 @@ router.post("/versions", async (req: Request, res: Response) => {
       songId: _song.id,
       songSlug: _song.slug,
       songTitle: _song.title,
-      versionId: _version.id,
       versionNumber: _version.versionNumber,
       versionTitle: _version.title,
       actorId: actor.id,
-      actorDisplayName: actor.displayName,
       commits: mergedCommitsForNotify,
     }).catch((err) => {
       logger.warn(
