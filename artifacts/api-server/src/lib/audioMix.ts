@@ -166,3 +166,62 @@ export async function uploadAutoMix(
   });
   return `/objects/songs/${songId}/versions/${objectId}`;
 }
+
+/**
+ * Delete auto-mix preview objects under the song's versions namespace that
+ * are not referenced by any published version's officialMixUrl. Pass
+ * `keepEntityPaths` to additionally protect freshly generated previews
+ * (e.g. the one we just uploaded for this curator session).
+ *
+ * Best-effort: storage / list errors are swallowed and a summary is
+ * returned so callers can log without failing the parent request.
+ */
+export async function cleanupOrphanedAutoMixes(opts: {
+  songId: string;
+  referencedEntityPaths: string[];
+  keepEntityPaths?: string[];
+}): Promise<{ deleted: number; errors: number }> {
+  const { songId, referencedEntityPaths, keepEntityPaths = [] } = opts;
+  const dir = process.env.PRIVATE_OBJECT_DIR;
+  if (!dir) {
+    return { deleted: 0, errors: 0 };
+  }
+
+  const protectedSet = new Set<string>([
+    ...referencedEntityPaths,
+    ...keepEntityPaths,
+  ]);
+
+  const prefixFullPath = `${dir.replace(/\/+$/, "")}/songs/${songId}/versions/`;
+  let bucketName: string;
+  let prefix: string;
+  try {
+    ({ bucketName, objectName: prefix } = parseObjectPath(prefixFullPath));
+  } catch {
+    return { deleted: 0, errors: 0 };
+  }
+
+  let files;
+  try {
+    [files] = await objectStorageClient.bucket(bucketName).getFiles({ prefix });
+  } catch {
+    return { deleted: 0, errors: 1 };
+  }
+
+  let deleted = 0;
+  let errors = 0;
+  for (const file of files) {
+    if (!file.name.endsWith("-automix.mp3")) continue;
+    const objectId = file.name.slice(prefix.length);
+    if (objectId.includes("/")) continue; // safety: stay one level deep
+    const entityPath = `/objects/songs/${songId}/versions/${objectId}`;
+    if (protectedSet.has(entityPath)) continue;
+    try {
+      await file.delete({ ignoreNotFound: true });
+      deleted++;
+    } catch {
+      errors++;
+    }
+  }
+  return { deleted, errors };
+}

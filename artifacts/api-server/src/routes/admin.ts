@@ -38,7 +38,12 @@ import {
   AdminUpdateSongCreditBody,
   AdminReorderSongCreditsBody,
 } from "@workspace/api-zod";
-import { mixLayeredAudio, uploadAutoMix, AudioMixError } from "../lib/audioMix";
+import {
+  mixLayeredAudio,
+  uploadAutoMix,
+  cleanupOrphanedAutoMixes,
+  AudioMixError,
+} from "../lib/audioMix";
 import { z } from "zod";
 
 function parseBody<S extends z.ZodTypeAny>(
@@ -381,6 +386,33 @@ router.post("/versions/preview-mix", async (req: Request, res: Response) => {
       commitObjectPaths: commits.map((c) => c.audioFileUrl),
     });
     const objectPath = await uploadAutoMix(b.songId, buffer);
+
+    // GC any auto-mix previews this song no longer needs (prior preview
+    // iterations the curator didn't publish). Keep anything referenced by
+    // a published version and the preview we just uploaded.
+    try {
+      const referenced = await db
+        .select({ officialMixUrl: versionsTable.officialMixUrl })
+        .from(versionsTable)
+        .where(eq(versionsTable.songId, b.songId));
+      const summary = await cleanupOrphanedAutoMixes({
+        songId: b.songId,
+        referencedEntityPaths: referenced.map((r) => r.officialMixUrl),
+        keepEntityPaths: [objectPath],
+      });
+      if (summary.deleted > 0 || summary.errors > 0) {
+        req.log.info(
+          { songId: b.songId, ...summary },
+          "auto-mix preview cleanup",
+        );
+      }
+    } catch (cleanupErr) {
+      req.log.warn(
+        { err: cleanupErr, songId: b.songId },
+        "auto-mix preview cleanup failed",
+      );
+    }
+
     res.json({ objectPath, sizeBytes });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Auto-mix failed";
@@ -513,6 +545,31 @@ router.post("/versions", async (req: Request, res: Response) => {
       res.status(500).json({ error: "Failed to publish version" });
     }
     return;
+  }
+
+  // GC any auto-mix previews this song no longer needs (everything except
+  // mixes referenced by a published version, which now includes the one we
+  // just chose). Best-effort — never blocks the response.
+  try {
+    const referenced = await db
+      .select({ officialMixUrl: versionsTable.officialMixUrl })
+      .from(versionsTable)
+      .where(eq(versionsTable.songId, b.songId));
+    const summary = await cleanupOrphanedAutoMixes({
+      songId: b.songId,
+      referencedEntityPaths: referenced.map((r) => r.officialMixUrl),
+    });
+    if (summary.deleted > 0 || summary.errors > 0) {
+      req.log.info(
+        { songId: b.songId, ...summary },
+        "auto-mix preview cleanup after publish",
+      );
+    }
+  } catch (cleanupErr) {
+    req.log.warn(
+      { err: cleanupErr, songId: b.songId },
+      "auto-mix preview cleanup after publish failed",
+    );
   }
 
   // Return full VersionWithMerges
