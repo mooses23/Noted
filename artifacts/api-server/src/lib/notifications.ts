@@ -85,7 +85,6 @@ export async function notifyCommitStatusChanged(args: {
   commitId: string;
   contributorId: string;
   commitTitle: string;
-  songSlug: string;
   songTitle: string;
   status: "shortlisted" | "rejected" | "pending";
   actorId: string;
@@ -116,11 +115,9 @@ export async function notifyCommitsMerged(args: {
   songId: string;
   songSlug: string;
   songTitle: string;
-  versionId: string;
   versionNumber: number;
   versionTitle: string;
   actorId: string;
-  actorDisplayName: string;
   commits: Array<{
     commitId: string;
     contributorId: string;
