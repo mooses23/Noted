@@ -41,6 +41,7 @@ Phase is enforced server-side: structure-phase songs reject accent rounds and vi
 - `rounds.kind` — `structure | accent`
 - `rounds.mergeBehavior` — `single | multi`
 - `commits.kind` — inherited from the round at submission time
+- `commit_drafts` — Notes a user finished while no round was open. Tied to a song + contributor + chosen instrument label. Visible from the user's profile and promoted to a real commit via `POST /api/commits/drafts/:id/submit` once a matching round opens. Storage uploads with `purpose=commit-audio` accept missing `roundId` and land under `songs/{songId}/drafts/commits`.
 
 ### Demo seed (`pnpm --filter @workspace/scripts run seed:layerstack`)
 

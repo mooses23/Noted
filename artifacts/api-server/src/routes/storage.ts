@@ -77,11 +77,16 @@ router.post("/storage/uploads/request-url", requireAuth, async (req: Request, re
         prefix = `songs/${songId}/cover`;
         break;
       case "commit-audio":
-        if (!songId || !roundId) {
-          res.status(400).json({ error: "songId and roundId are required for commit-audio uploads." });
+        if (!songId) {
+          res.status(400).json({ error: "songId is required for commit-audio uploads." });
           return;
         }
-        prefix = `songs/${songId}/rounds/${roundId}/commits`;
+        // When no round is open, allow uploading as a draft. The audio lives
+        // under a song-scoped draft prefix until the user submits it into a
+        // future round.
+        prefix = roundId
+          ? `songs/${songId}/rounds/${roundId}/commits`
+          : `songs/${songId}/drafts/commits`;
         break;
       case "avatar":
         prefix = `avatars`;

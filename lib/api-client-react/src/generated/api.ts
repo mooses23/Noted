@@ -27,7 +27,9 @@ import type {
   AdvancePhaseBody,
   Comment,
   CommitDetail,
+  CommitDraft,
   CommitSummary,
+  CreateDraftBody,
   CreateRoundBody,
   CreateSongBody,
   CreateSongCreditBody,
@@ -53,6 +55,7 @@ import type {
   SongDetail,
   SongFile,
   SubmitCommitBody,
+  SubmitDraftBody,
   UpdateRoundBody,
   UpdateSongBody,
   UpdateSongCreditBody,
@@ -1825,6 +1828,332 @@ export const useRequestUploadUrl = <
   TContext
 > => {
   return useMutation(getRequestUploadUrlMutationOptions(options));
+};
+
+/**
+ * @summary List the current user's commit drafts (notes saved before a round was open)
+ */
+export const getListMyDraftsUrl = () => {
+  return `/api/commits/drafts`;
+};
+
+export const listMyDrafts = async (
+  options?: RequestInit,
+): Promise<CommitDraft[]> => {
+  return customFetch<CommitDraft[]>(getListMyDraftsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMyDraftsQueryKey = () => {
+  return [`/api/commits/drafts`] as const;
+};
+
+export const getListMyDraftsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMyDrafts>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyDrafts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMyDraftsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyDrafts>>> = ({
+    signal,
+  }) => listMyDrafts({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMyDrafts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMyDraftsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMyDrafts>>
+>;
+export type ListMyDraftsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List the current user's commit drafts (notes saved before a round was open)
+ */
+
+export function useListMyDrafts<
+  TData = Awaited<ReturnType<typeof listMyDrafts>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyDrafts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMyDraftsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Save a Note as a draft (no round required)
+ */
+export const getCreateDraftUrl = () => {
+  return `/api/commits/drafts`;
+};
+
+export const createDraft = async (
+  createDraftBody: CreateDraftBody,
+  options?: RequestInit,
+): Promise<CommitDraft> => {
+  return customFetch<CommitDraft>(getCreateDraftUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createDraftBody),
+  });
+};
+
+export const getCreateDraftMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createDraft>>,
+    TError,
+    { data: BodyType<CreateDraftBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createDraft>>,
+  TError,
+  { data: BodyType<CreateDraftBody> },
+  TContext
+> => {
+  const mutationKey = ["createDraft"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createDraft>>,
+    { data: BodyType<CreateDraftBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createDraft(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateDraftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createDraft>>
+>;
+export type CreateDraftMutationBody = BodyType<CreateDraftBody>;
+export type CreateDraftMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Save a Note as a draft (no round required)
+ */
+export const useCreateDraft = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createDraft>>,
+    TError,
+    { data: BodyType<CreateDraftBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createDraft>>,
+  TError,
+  { data: BodyType<CreateDraftBody> },
+  TContext
+> => {
+  return useMutation(getCreateDraftMutationOptions(options));
+};
+
+export const getDeleteDraftUrl = (draftId: string) => {
+  return `/api/commits/drafts/${draftId}`;
+};
+
+export const deleteDraft = async (
+  draftId: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteDraftUrl(draftId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteDraftMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteDraft>>,
+    TError,
+    { draftId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteDraft>>,
+  TError,
+  { draftId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteDraft"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteDraft>>,
+    { draftId: string }
+  > = (props) => {
+    const { draftId } = props ?? {};
+
+    return deleteDraft(draftId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteDraftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteDraft>>
+>;
+
+export type DeleteDraftMutationError = ErrorType<unknown>;
+
+export const useDeleteDraft = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteDraft>>,
+    TError,
+    { draftId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteDraft>>,
+  TError,
+  { draftId: string },
+  TContext
+> => {
+  return useMutation(getDeleteDraftMutationOptions(options));
+};
+
+/**
+ * @summary Promote a draft into a real commit on an open round
+ */
+export const getSubmitDraftUrl = (draftId: string) => {
+  return `/api/commits/drafts/${draftId}/submit`;
+};
+
+export const submitDraft = async (
+  draftId: string,
+  submitDraftBody?: SubmitDraftBody,
+  options?: RequestInit,
+): Promise<CommitDetail> => {
+  return customFetch<CommitDetail>(getSubmitDraftUrl(draftId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(submitDraftBody),
+  });
+};
+
+export const getSubmitDraftMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitDraft>>,
+    TError,
+    { draftId: string; data: BodyType<SubmitDraftBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof submitDraft>>,
+  TError,
+  { draftId: string; data: BodyType<SubmitDraftBody> },
+  TContext
+> => {
+  const mutationKey = ["submitDraft"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof submitDraft>>,
+    { draftId: string; data: BodyType<SubmitDraftBody> }
+  > = (props) => {
+    const { draftId, data } = props ?? {};
+
+    return submitDraft(draftId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SubmitDraftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof submitDraft>>
+>;
+export type SubmitDraftMutationBody = BodyType<SubmitDraftBody>;
+export type SubmitDraftMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Promote a draft into a real commit on an open round
+ */
+export const useSubmitDraft = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitDraft>>,
+    TError,
+    { draftId: string; data: BodyType<SubmitDraftBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof submitDraft>>,
+  TError,
+  { draftId: string; data: BodyType<SubmitDraftBody> },
+  TContext
+> => {
+  return useMutation(getSubmitDraftMutationOptions(options));
 };
 
 /**

@@ -434,6 +434,48 @@ export interface PostCommentBody {
   body: string;
 }
 
+export interface CommitDraft {
+  id: string;
+  songId: string;
+  contributorId: string;
+  title: string;
+  note?: string | null;
+  instrumentType: string;
+  audioFileUrl: string;
+  overlayOffsetSeconds: number;
+  displayNameOverride?: string | null;
+  socialHandle?: string | null;
+  confirmedHumanMade: boolean;
+  confirmedRightsGrant: boolean;
+  createdAt: string;
+  updatedAt: string;
+  song: Song;
+  eligibleRound?: Round | null;
+}
+
+export interface CreateDraftBody {
+  songId: string;
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  title: string;
+  /** @maxLength 500 */
+  note?: string;
+  instrumentType: string;
+  audioObjectPath: string;
+  /** @minimum 0 */
+  overlayOffsetSeconds?: number;
+  displayNameOverride?: string;
+  socialHandle?: string;
+  confirmedHumanMade: boolean;
+  confirmedRightsGrant: boolean;
+}
+
+export interface SubmitDraftBody {
+  roundId?: string;
+}
+
 export type AdminAddSongFileBodyFileType =
   (typeof AdminAddSongFileBodyFileType)[keyof typeof AdminAddSongFileBodyFileType];
 
