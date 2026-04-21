@@ -1,21 +1,21 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ArrowRight, Search, ShieldCheck } from "lucide-react";
+import { ArrowRight, Search, ShieldCheck, Music } from "lucide-react";
 import {
-  useListRisingCommits,
   useGetPublicStats,
   useListSongs,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CoverImage } from "@/components/CoverImage";
+import { format } from "date-fns";
 
 export default function Home() {
-  const { data: rising, isLoading: isRisingLoading } = useListRisingCommits({
-    limit: 6,
-  });
   const { data: stats } = useGetPublicStats();
-  const { data: songs } = useListSongs();
+  const { data: songs, isLoading: isSongsLoading } = useListSongs({
+    status: "active",
+  });
+  const recentSongs = useMemo(() => (songs ? songs.slice(0, 3) : []), [songs]);
   const [, setLocation] = useLocation();
   const [query, setQuery] = useState("");
   const [activeGenre, setActiveGenre] = useState<string | null>(null);
@@ -121,74 +121,76 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Recent Hits */}
+      {/* Recent Hits — 3 active songs */}
       <section className="py-16 md:py-20 px-6 border-b border-border">
         <div className="container mx-auto">
           <div className="flex items-end justify-between mb-10">
             <div>
-              <h2 className="text-3xl md:text-4xl font-serif font-bold mb-1">Recent hits</h2>
+              <h2 className="text-3xl md:text-4xl font-serif font-bold mb-1">
+                Recent hits
+              </h2>
               <p className="text-muted-foreground text-sm">
-                Notes the community is rallying behind right now.
+                Songs the community is building right now.
               </p>
             </div>
             <Link
-              href="/commits"
+              href="/songs"
               className="text-primary hover:text-primary/80 uppercase tracking-widest text-xs flex items-center gap-2"
             >
-              All Notes <ArrowRight className="w-4 h-4" />
+              All songs <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
 
-          {isRisingLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3, 4, 5, 6].map((i) => (
+          {isSongsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="h-44 bg-card border border-border animate-pulse"
+                  className="h-72 bg-card border border-border animate-pulse"
                 />
               ))}
             </div>
-          ) : rising && rising.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {rising.map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/commits/${c.id}`}
-                  className="group bg-card border border-border p-5 flex flex-col gap-3 hover:border-primary/60 transition-colors"
+          ) : recentSongs.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {recentSongs.map((s) => (
+                <div
+                  key={s.id}
+                  className="group bg-card border border-border flex flex-col hover:border-primary/60 transition-colors"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
-                        {c.instrumentType} · {c.songGenre || "Music"}
-                      </div>
-                      <div className="font-serif text-xl font-bold leading-tight truncate group-hover:text-primary">
-                        {c.title}
-                      </div>
+                  <CoverImage
+                    url={s.coverImageUrl}
+                    alt={s.title}
+                    className="w-full aspect-square border-b border-border"
+                    iconSize="w-12 h-12"
+                  />
+                  <div className="p-5 flex flex-col flex-1">
+                    <div className="text-[10px] uppercase tracking-widest text-primary mb-2 truncate">
+                      {s.genre} · {s.bpm} BPM · {s.musicalKey}
                     </div>
-                    <div className="flex flex-col items-center text-center px-2 py-1 border border-border bg-background flex-shrink-0">
-                      <span className="text-base font-mono font-bold tabular-nums leading-none">
-                        {c.voteCount}
-                      </span>
-                      <span className="text-[8px] uppercase tracking-widest text-muted-foreground mt-0.5">
-                        votes
-                      </span>
+                    <h3 className="font-serif text-xl font-bold leading-tight mb-1 truncate group-hover:text-primary transition-colors">
+                      {s.title}
+                    </h3>
+                    <div className="text-xs text-muted-foreground mb-4 truncate">
+                      Seed by{" "}
+                      <span className="text-foreground">{s.creatorName}</span>
                     </div>
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
+                      <Music className="w-3 h-3" />
+                      Started {format(new Date(s.createdAt), "MMM d, yyyy")}
+                    </div>
+                    <Link
+                      href={`/songs/${s.slug}`}
+                      className="mt-auto inline-flex items-center justify-center gap-2 h-10 border border-border text-[10px] uppercase tracking-widest hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
+                    >
+                      See details <ArrowRight className="w-3 h-3" />
+                    </Link>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    by{" "}
-                    <span className="text-foreground">
-                      {c.contributor.displayName}
-                    </span>
-                  </div>
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground mt-auto truncate">
-                    For {c.songTitle}
-                  </div>
-                </Link>
+                </div>
               ))}
             </div>
           ) : (
             <div className="border border-dashed border-border bg-card p-12 text-center text-muted-foreground">
-              No Notes have been dropped yet — be the first.
+              No active songs yet — check back soon.
             </div>
           )}
         </div>

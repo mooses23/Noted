@@ -9,8 +9,6 @@ import {
   useVoteOnCommit,
   useUnvoteCommit,
   useGetCurrentUser,
-  useListVersionsForSong,
-  getListVersionsForSongQueryKey,
   useListCredits,
   getListCreditsQueryKey,
   type CommitSummary,
@@ -193,7 +191,22 @@ export default function SongDetail() {
             </div>
           </section>
 
-          <VersionStory songId={song.id} />
+          <section>
+            <div className="flex items-center justify-between p-5 bg-card border border-border">
+              <div>
+                <h2 className="font-serif text-xl font-bold">Version story</h2>
+                <p className="text-sm text-muted-foreground">
+                  See every merged Note and how this song grew.
+                </p>
+              </div>
+              <Link
+                href={`/songs/${song.slug}/versions`}
+                className="text-[10px] uppercase tracking-widest text-primary hover:underline"
+              >
+                View all versions →
+              </Link>
+            </div>
+          </section>
         </div>
 
         <div className="space-y-10">
@@ -393,59 +406,6 @@ function ArtistCredit({
             ))}
           </ul>
         )}
-      </div>
-    </section>
-  );
-}
-
-function VersionStory({ songId }: { songId: string }) {
-  const { data: versions, isLoading } = useListVersionsForSong(songId, {
-    query: { enabled: !!songId, queryKey: getListVersionsForSongQueryKey(songId) },
-  });
-
-  if (isLoading) {
-    return <div className="h-32 bg-card border border-border animate-pulse" />;
-  }
-  if (!versions || versions.length === 0) return null;
-
-  return (
-    <section>
-      <h2 className="text-2xl font-serif font-bold mb-5">Version story</h2>
-      <div className="border-l-2 border-border pl-6 space-y-7">
-        {versions.map((v) => (
-          <div key={v.id} className="relative">
-            <div className="absolute -left-[31px] top-1.5 w-4 h-4 bg-background border-2 border-primary" />
-            <div className="flex items-center gap-3 flex-wrap mb-2">
-              <span className="font-serif text-xl font-bold">{v.title}</span>
-              {v.isCurrent && (
-                <span className="text-[10px] uppercase tracking-widest px-2 py-0.5 bg-primary text-primary-foreground">
-                  Current
-                </span>
-              )}
-            </div>
-            {v.description && (
-              <p className="text-sm text-muted-foreground mb-3">
-                {v.description}
-              </p>
-            )}
-            {v.merges.length === 0 ? (
-              <div className="text-xs text-muted-foreground italic">
-                Seed version — no merged Notes yet.
-              </div>
-            ) : (
-              <ul className="space-y-1 text-sm">
-                {v.merges.map((m) => (
-                  <li key={m.id} className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold">{m.commitTitle}</span>
-                    <span className="text-muted-foreground">
-                      · {m.instrumentType} · {m.contributor.displayName}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        ))}
       </div>
     </section>
   );
