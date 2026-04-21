@@ -24,9 +24,21 @@ export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
   const from = process.env.DIGEST_FROM_EMAIL ?? "Noted <notifications@noted.app>";
 
   if (!apiKey) {
+    if (process.env.NODE_ENV === "production") {
+      // Refuse to silently swallow real digests in production.
+      logger.error(
+        { to: args.to, subject: args.subject },
+        "email.sendEmail: RESEND_API_KEY missing in production — email NOT sent",
+      );
+      return {
+        delivered: false,
+        provider: "resend",
+        error: "RESEND_API_KEY not configured",
+      };
+    }
     logger.info(
       { to: args.to, subject: args.subject },
-      "email.sendEmail: RESEND_API_KEY not set — logging email instead of sending",
+      "email.sendEmail: RESEND_API_KEY not set — logging email instead of sending (dev only)",
     );
     return { delivered: false, provider: "log" };
   }
