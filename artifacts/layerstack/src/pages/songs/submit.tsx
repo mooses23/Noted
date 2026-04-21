@@ -155,6 +155,15 @@ export default function SubmitCommit() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioFile, objectPath, isUploading, song?.id, song?.currentRound?.id]);
 
+  // Reset prefill state when navigating to a different draft within the same
+  // mounted component instance.
+  useEffect(() => {
+    setPrefilled(false);
+    setAudioFile(null);
+    setObjectPath(null);
+    setOverlayOffset(0);
+  }, [draftId]);
+
   // Prefill the form from an existing draft once the data has loaded.
   useEffect(() => {
     if (!isEditing || prefilled || !editingDraft) return;
@@ -196,7 +205,7 @@ export default function SubmitCommit() {
       layers.push({
         id: "overlay",
         label: form.watch("title") || editingDraft.title,
-        source: editingDraft.audioFileUrl,
+        source: objectPath,
         offsetSeconds: overlayOffset,
       });
     }
