@@ -361,6 +361,58 @@ or disable the noisier surface (typically the frontend).
    §8.3. This is the bit that makes latency regressions actually wake
    somebody up before users complain.
 
+### 8.7 External uptime monitor (pages on-call when the site is fully down)
+
+Sentry alerts (§8.3) only fire when the application produces an error event.
+If the API serverless function fails to **boot** at all — bad env var, an
+expired GCS service-account key, Supabase unreachable, a Vercel platform
+incident — the function returns a bare `5xx` (or times out) with no Sentry
+event ever sent, so the on-call channel stays silent. An external uptime
+monitor closes that gap by treating "no response / non-2xx response" as the
+page-worthy signal.
+
+Configure a third-party uptime monitor (Better Stack, Pingdom, UptimeRobot,
+Checkly, Datadog Synthetics — any of them work) with **two checks**:
+
+| Check name              | URL                                | Expected            |
+| ----------------------- | ---------------------------------- | ------------------- |
+| `layerstack-api-health` | `https://<web-url>/api/healthz`    | HTTP 200, body contains `"status":"ok"` |
+| `layerstack-web-root`   | `https://<web-url>/`               | HTTP 200            |
+
+Settings for both checks:
+
+- **Frequency:** every 1 minute.
+- **Regions:** at least two geographically distinct probe regions (e.g.
+  `us-east` + `eu-west`). Requiring **2 of N regions to fail** before paging
+  suppresses single-region ISP blips.
+- **Failure threshold:** 2 consecutive failed checks before alerting (avoids
+  paging on a single dropped packet).
+- **Timeout:** 10 seconds per request — long enough for a serverless cold
+  start, short enough to catch a hung function.
+
+Hit the API check **through the web URL**, not the bare API origin
+(`layerstack-api.vercel.app`). That way a single check exercises the SPA's
+DNS, the Vercel edge, the `/api/*` rewrite, *and* the API function — exactly
+the path real users take. The SPA-root check additionally catches the case
+where the API is healthy but the static build is broken or unrouted.
+
+**Wire the alert to the same on-call destination as the Sentry alerts in
+§8.3.** Most uptime providers integrate natively with PagerDuty, Opsgenie,
+Slack, and Microsoft Teams — pick the same destination so a "site is down"
+page lands in the same channel/rotation as an error-rate page and the
+on-call doesn't have to watch two inboxes.
+
+**Status page (optional but recommended).** Better Stack, Pingdom, and
+UptimeRobot all expose a public status-page URL backed by these checks.
+Linking it from the app footer or `/status` redirect lets users
+self-serve during an incident.
+
+**Add the monitor to this doc.** Once the monitor is created, paste its
+dashboard URL here so future on-calls can find it in one click:
+
+- Uptime monitor dashboard: `<paste URL after creating the monitor>`
+- Public status page (if enabled): `<paste URL after creating the monitor>`
+
 ## Troubleshooting
 
 - **`ECONNREFUSED` or pooler errors on cold start.** Check that `DATABASE_URL`
