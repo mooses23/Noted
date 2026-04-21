@@ -9,6 +9,7 @@ import {
   pgEnum,
   uniqueIndex,
   index,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
@@ -265,7 +266,12 @@ export const commentsTable = pgTable(
     authorId: uuid("author_id")
       .notNull()
       .references(() => profilesTable.id, { onDelete: "cascade" }),
+    parentCommentId: uuid("parent_comment_id").references(
+      (): AnyPgColumn => commentsTable.id,
+      { onDelete: "set null" },
+    ),
     body: text("body").notNull(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -273,6 +279,7 @@ export const commentsTable = pgTable(
   (t) => [
     index("comments_song_idx").on(t.songId),
     index("comments_author_idx").on(t.authorId),
+    index("comments_parent_idx").on(t.parentCommentId),
   ],
 );
 
@@ -406,6 +413,33 @@ export const notificationsTable = pgTable(
   (t) => [
     index("notifications_user_idx").on(t.userId),
     index("notifications_user_unread_idx").on(t.userId, t.readAt),
+  ],
+);
+
+/**
+ * Tracks which (draft, round) pairs we've already sent a "draft is now
+ * submittable" notification for, so toggling a round's status off/on or
+ * re-PATCHing it open never re-notifies the same contributor twice.
+ * Insert is paired with the notification row; rely on the unique index +
+ * onConflictDoNothing for idempotency.
+ */
+export const draftRoundNotificationsTable = pgTable(
+  "draft_round_notifications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    draftId: uuid("draft_id")
+      .notNull()
+      .references(() => commitDraftsTable.id, { onDelete: "cascade" }),
+    roundId: uuid("round_id")
+      .notNull()
+      .references(() => roundsTable.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("draft_round_notifications_uq").on(t.draftId, t.roundId),
+    index("draft_round_notifications_round_idx").on(t.roundId),
   ],
 );
 

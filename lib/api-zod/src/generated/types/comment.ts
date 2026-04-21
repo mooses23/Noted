@@ -11,7 +11,10 @@ export interface Comment {
   id: string;
   songId: string;
   authorId: string;
+  parentCommentId?: string | null;
   body: string;
+  deleted: boolean;
+  replyCount: number;
   createdAt: Date;
   author: ContributorLite;
 }

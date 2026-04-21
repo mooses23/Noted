@@ -3,10 +3,12 @@ import {
   notificationsTable,
   versionMergesTable,
   commitsTable,
+  commitDraftsTable,
+  draftRoundNotificationsTable,
   songsTable,
   type InsertNotification,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, notExists } from "drizzle-orm";
 
 /**
  * Recipients for a new comment on a song:
@@ -141,5 +143,83 @@ export async function notifyCommitsMerged(args: {
   if (rows.length === 0) return 0;
   await db.insert(notificationsTable).values(rows);
   return rows.length;
+}
+
+/**
+ * Notify every contributor with a saved draft that just became eligible to
+ * submit because a matching round opened. Eligibility = same songId + same
+ * instrumentType as the round's `allowedInstrumentType`. Skips contributors
+ * who already have a commit on this round (they wouldn't be allowed to
+ * submit anyway).
+ *
+ * Idempotent: backed by a unique (draftId, roundId) row in
+ * `draft_round_notifications`. Calling this repeatedly for the same round —
+ * e.g. an admin closes and re-opens, or PATCHes the round again — will not
+ * double-notify. New drafts created later that still match will be picked
+ * up the next time the round transitions to open.
+ */
+export async function notifyDraftsBecameSubmittable(args: {
+  roundId: string;
+  songId: string;
+  songSlug: string;
+  songTitle: string;
+  roundTitle: string;
+  allowedInstrumentType: string;
+}): Promise<number> {
+  const eligible = await db
+    .select({
+      draftId: commitDraftsTable.id,
+      contributorId: commitDraftsTable.contributorId,
+      title: commitDraftsTable.title,
+    })
+    .from(commitDraftsTable)
+    .leftJoin(
+      draftRoundNotificationsTable,
+      and(
+        eq(draftRoundNotificationsTable.draftId, commitDraftsTable.id),
+        eq(draftRoundNotificationsTable.roundId, args.roundId),
+      ),
+    )
+    .where(
+      and(
+        eq(commitDraftsTable.songId, args.songId),
+        eq(commitDraftsTable.instrumentType, args.allowedInstrumentType),
+        isNull(draftRoundNotificationsTable.id),
+        notExists(
+          db
+            .select({ x: commitsTable.id })
+            .from(commitsTable)
+            .where(
+              and(
+                eq(commitsTable.roundId, args.roundId),
+                eq(commitsTable.contributorId, commitDraftsTable.contributorId),
+              ),
+            ),
+        ),
+      ),
+    );
+
+  if (eligible.length === 0) return 0;
+
+  const notifs: InsertNotification[] = eligible.map((d) => ({
+    userId: d.contributorId,
+    type: "draft_submittable",
+    title: `Your saved Note “${d.title}” is ready to submit`,
+    body: `A new round opened on “${args.songTitle}”: ${args.roundTitle}.`,
+    linkPath: `/profile`,
+    actorId: null,
+    songId: args.songId,
+    commentId: null,
+  }));
+
+  await db.transaction(async (tx) => {
+    await tx.insert(notificationsTable).values(notifs);
+    await tx
+      .insert(draftRoundNotificationsTable)
+      .values(eligible.map((d) => ({ draftId: d.draftId, roundId: args.roundId })))
+      .onConflictDoNothing();
+  });
+
+  return notifs.length;
 }
 

@@ -19,6 +19,7 @@ import { validateMergeBehavior } from "../lib/merge-validation";
 import {
   notifyCommitStatusChanged,
   notifyCommitsMerged,
+  notifyDraftsBecameSubmittable,
 } from "../lib/notifications";
 import { logger } from "../lib/logger";
 import { fetchCommitRows, fetchCommitById, fetchMergedVersionForCommit } from "../lib/commitQueries";
@@ -178,7 +179,12 @@ router.post("/rounds", async (req: Request, res: Response) => {
     .from(roundsTable)
     .where(eq(roundsTable.songId, b.songId));
   const [song] = await db
-    .select({ currentVersionId: songsTable.currentVersionId, phase: songsTable.phase })
+    .select({
+      currentVersionId: songsTable.currentVersionId,
+      phase: songsTable.phase,
+      slug: songsTable.slug,
+      title: songsTable.title,
+    })
     .from(songsTable)
     .where(eq(songsTable.id, b.songId));
   if (!song) {
@@ -216,6 +222,23 @@ router.post("/rounds", async (req: Request, res: Response) => {
       baseVersionId: song?.currentVersionId ?? null,
     })
     .returning();
+  if (created && created.status === "open") {
+    try {
+      await notifyDraftsBecameSubmittable({
+        roundId: created.id,
+        songId: created.songId,
+        songSlug: song.slug,
+        songTitle: song.title,
+        roundTitle: created.title,
+        allowedInstrumentType: created.allowedInstrumentType,
+      });
+    } catch (err) {
+      logger.error(
+        { err, roundId: created.id },
+        "notifyDraftsBecameSubmittable failed on round create",
+      );
+    }
+  }
   res.json(toRound(created!));
 });
 
@@ -274,6 +297,31 @@ router.patch("/rounds/:roundId", async (req: Request, res: Response) => {
   if (!updated) {
     res.status(404).json({ error: "Not found" });
     return;
+  }
+  if (updated.status === "open") {
+    // Idempotent: notifyDraftsBecameSubmittable is gated by a unique
+    // (draftId, roundId) row, so re-PATCHing or close→open won't duplicate.
+    try {
+      const [parentSong] = await db
+        .select({ slug: songsTable.slug, title: songsTable.title })
+        .from(songsTable)
+        .where(eq(songsTable.id, updated.songId));
+      if (parentSong) {
+        await notifyDraftsBecameSubmittable({
+          roundId: updated.id,
+          songId: updated.songId,
+          songSlug: parentSong.slug,
+          songTitle: parentSong.title,
+          roundTitle: updated.title,
+          allowedInstrumentType: updated.allowedInstrumentType,
+        });
+      }
+    } catch (err) {
+      logger.error(
+        { err, roundId: updated.id },
+        "notifyDraftsBecameSubmittable failed on round update",
+      );
+    }
   }
   res.json(toRound(updated));
 });

@@ -91,14 +91,24 @@ export const toContributor = (p: Profile) => ({
   socialHandle: p.socialHandle ?? null,
 });
 
-export const toComment = (c: Comment, author: Profile) => ({
-  id: c.id,
-  songId: c.songId,
-  authorId: c.authorId,
-  body: c.body,
-  createdAt: c.createdAt.toISOString(),
-  author: toContributor(author),
-});
+export const toComment = (
+  c: Comment,
+  author: Profile,
+  replyCount = 0,
+) => {
+  const deleted = c.deletedAt !== null;
+  return {
+    id: c.id,
+    songId: c.songId,
+    authorId: c.authorId,
+    parentCommentId: c.parentCommentId ?? null,
+    body: deleted ? "" : c.body,
+    deleted,
+    replyCount,
+    createdAt: c.createdAt.toISOString(),
+    author: toContributor(author),
+  };
+};
 
 export const toProfile = (p: Profile) => ({
   id: p.id,

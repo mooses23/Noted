@@ -421,7 +421,10 @@ export interface Comment {
   id: string;
   songId: string;
   authorId: string;
+  parentCommentId?: string | null;
   body: string;
+  deleted: boolean;
+  replyCount: number;
   createdAt: string;
   author: ContributorLite;
 }
@@ -452,6 +455,7 @@ export interface PostCommentBody {
    * @maxLength 2000
    */
   body: string;
+  parentCommentId?: string | null;
 }
 
 export interface ReportCommentBody {

@@ -663,6 +663,7 @@ function CommentsSection({ songId }: { songId: string }) {
   const queryClient = useQueryClient();
   const { data: user } = useGetCurrentUser();
   const [body, setBody] = useState("");
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
   const commentsQueryKey = getListSongCommentsQueryKey(songId);
   const { data: comments, isLoading } = useListSongComments(songId, {
@@ -690,6 +691,27 @@ function CommentsSection({ songId }: { songId: string }) {
         onError: (err) => {
           toast({
             title: "Couldn't post comment",
+            description: err.message,
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
+
+  const handleReply = (parentCommentId: string, replyBody: string) => {
+    const trimmed = replyBody.trim();
+    if (!trimmed) return;
+    postMutation.mutate(
+      { songId, data: { body: trimmed, parentCommentId } },
+      {
+        onSuccess: () => {
+          setReplyingTo(null);
+          queryClient.invalidateQueries({ queryKey: commentsQueryKey });
+        },
+        onError: (err) => {
+          toast({
+            title: "Couldn't post reply",
             description: err.message,
             variant: "destructive",
           });
@@ -744,12 +766,46 @@ function CommentsSection({ songId }: { songId: string }) {
 
   const list = comments ?? [];
 
+  // Build a tree: top-level comments (newest first from API) + their replies (oldest first).
+  const { topLevel, repliesByParent, totalCount } = useMemo(() => {
+    const parents: Comment[] = [];
+    const replies = new Map<string, Comment[]>();
+    for (const c of list) {
+      if (c.parentCommentId) {
+        const arr = replies.get(c.parentCommentId) ?? [];
+        arr.push(c);
+        replies.set(c.parentCommentId, arr);
+      } else {
+        parents.push(c);
+      }
+    }
+    // Sort replies oldest-first (the API returns newest-first).
+    for (const arr of replies.values()) {
+      arr.sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      );
+    }
+    // Hide tombstone parents that have no replies left after live filtering.
+    const visibleParents = parents.filter(
+      (p) => !p.deleted || (replies.get(p.id)?.length ?? 0) > 0,
+    );
+    const visibleCount =
+      visibleParents.filter((p) => !p.deleted).length +
+      list.filter((c) => c.parentCommentId && !c.deleted).length;
+    return {
+      topLevel: visibleParents,
+      repliesByParent: replies,
+      totalCount: visibleCount,
+    };
+  }, [list]);
+
   return (
     <section id="comments" className="scroll-mt-24">
       <h2 className="text-2xl font-serif font-bold mb-4 flex items-center gap-2">
         <MessageSquare className="w-5 h-5" /> Comments
         <span className="text-sm font-sans font-normal text-muted-foreground">
-          ({list.length})
+          ({totalCount})
         </span>
       </h2>
 
@@ -776,7 +832,9 @@ function CommentsSection({ songId }: { songId: string }) {
               size="sm"
               disabled={!body.trim() || postMutation.isPending}
             >
-              {postMutation.isPending ? "Posting…" : "Post comment"}
+              {postMutation.isPending && !replyingTo
+                ? "Posting…"
+                : "Post comment"}
             </Button>
           </div>
         </form>
@@ -793,58 +851,201 @@ function CommentsSection({ songId }: { songId: string }) {
         <div className="bg-card border border-border p-6 text-sm text-muted-foreground">
           Loading comments…
         </div>
-      ) : list.length === 0 ? (
+      ) : topLevel.length === 0 ? (
         <div className="bg-card border border-dashed border-border p-6 text-sm text-muted-foreground">
           No comments yet. Be the first to share what you hear.
         </div>
       ) : (
         <ul className="space-y-3">
-          {list.map((c: Comment) => {
-            const canDelete = isAdmin || (myId !== null && c.authorId === myId);
+          {topLevel.map((c) => {
+            const replies = repliesByParent.get(c.id) ?? [];
             return (
-              <li
-                key={c.id}
-                className="bg-card border border-border p-4"
-              >
-                <div className="flex items-baseline justify-between gap-3 mb-2">
-                  <div className="flex items-baseline gap-2 min-w-0">
-                    <span className="font-bold text-sm truncate">
-                      {c.author.displayName}
-                    </span>
-                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                      {format(new Date(c.createdAt), "MMM d, yyyy · h:mm a")}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    {user && myId !== c.authorId && (
-                      <button
-                        onClick={() => handleReport(c.id)}
-                        disabled={reportMutation.isPending}
-                        className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive disabled:opacity-50"
-                        title="Report this comment to moderators"
+              <li key={c.id} className="bg-card border border-border">
+                <CommentBody
+                  comment={c}
+                  isAdmin={isAdmin}
+                  myId={myId}
+                  canReply={!!user}
+                  isReplying={replyingTo === c.id}
+                  onStartReply={() => setReplyingTo(c.id)}
+                  onCancelReply={() => setReplyingTo(null)}
+                  onSubmitReply={(text) => handleReply(c.id, text)}
+                  onDelete={() => handleDelete(c.id)}
+                  onReport={() => handleReport(c.id)}
+                  isPostingReply={
+                    postMutation.isPending && replyingTo === c.id
+                  }
+                  deleteDisabled={deleteMutation.isPending}
+                  reportDisabled={reportMutation.isPending}
+                />
+                {replies.length > 0 && (
+                  <ul className="border-t border-border bg-background/40">
+                    {replies.map((r) => (
+                      <li
+                        key={r.id}
+                        className="border-l-2 border-primary/40 ml-4 md:ml-6"
                       >
-                        Report
-                      </button>
-                    )}
-                    {canDelete && (
-                      <button
-                        onClick={() => handleDelete(c.id)}
-                        disabled={deleteMutation.isPending}
-                        className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive disabled:opacity-50"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <p className="text-sm whitespace-pre-wrap break-words">
-                  {c.body}
-                </p>
+                        <CommentBody
+                          comment={r}
+                          isAdmin={isAdmin}
+                          myId={myId}
+                          canReply={!!user}
+                          isReply
+                          isReplying={replyingTo === r.id}
+                          onStartReply={() => setReplyingTo(c.id)}
+                          onCancelReply={() => setReplyingTo(null)}
+                          onSubmitReply={(text) => handleReply(c.id, text)}
+                          onDelete={() => handleDelete(r.id)}
+                          onReport={() => handleReport(r.id)}
+                          isPostingReply={false}
+                          deleteDisabled={deleteMutation.isPending}
+                          reportDisabled={reportMutation.isPending}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </li>
             );
           })}
         </ul>
       )}
     </section>
+  );
+}
+
+function CommentBody({
+  comment: c,
+  isAdmin,
+  myId,
+  canReply,
+  isReply,
+  isReplying,
+  onStartReply,
+  onCancelReply,
+  onSubmitReply,
+  onDelete,
+  onReport,
+  isPostingReply,
+  deleteDisabled,
+  reportDisabled,
+}: {
+  comment: Comment;
+  isAdmin: boolean;
+  myId: string | null;
+  canReply: boolean;
+  isReply?: boolean;
+  isReplying: boolean;
+  onStartReply: () => void;
+  onCancelReply: () => void;
+  onSubmitReply: (text: string) => void;
+  onDelete: () => void;
+  onReport: () => void;
+  isPostingReply: boolean;
+  deleteDisabled: boolean;
+  reportDisabled: boolean;
+}) {
+  const [draft, setDraft] = useState("");
+  const canDelete =
+    !c.deleted && (isAdmin || (myId !== null && c.authorId === myId));
+  const canReport = !c.deleted && myId !== null && c.authorId !== myId;
+
+  return (
+    <div className="p-4">
+      <div className="flex items-baseline justify-between gap-3 mb-2">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <span className="font-bold text-sm truncate">
+            {c.deleted ? "—" : c.author.displayName}
+          </span>
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            {format(new Date(c.createdAt), "MMM d, yyyy · h:mm a")}
+          </span>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {canReport && (
+            <button
+              onClick={onReport}
+              disabled={reportDisabled}
+              className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive disabled:opacity-50"
+              title="Report this comment to moderators"
+            >
+              Report
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={onDelete}
+              disabled={deleteDisabled}
+              className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive disabled:opacity-50"
+            >
+              Delete
+            </button>
+          )}
+        </div>
+      </div>
+      {c.deleted ? (
+        <p className="text-sm italic text-muted-foreground">
+          [comment deleted]
+        </p>
+      ) : (
+        <p className="text-sm whitespace-pre-wrap break-words">{c.body}</p>
+      )}
+
+      {!c.deleted && canReply && !isReply && (
+        <div className="mt-3">
+          {isReplying ? (
+            <div className="border border-border bg-background p-3">
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder={`Reply to ${c.author.displayName}…`}
+                maxLength={2000}
+                rows={2}
+                className="w-full bg-card border border-border p-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-primary"
+                disabled={isPostingReply}
+                autoFocus
+              />
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                  {draft.length}/2000
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setDraft("");
+                      onCancelReply();
+                    }}
+                    disabled={isPostingReply}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!draft.trim() || isPostingReply}
+                    onClick={() => {
+                      onSubmitReply(draft);
+                      setDraft("");
+                    }}
+                  >
+                    {isPostingReply ? "Posting…" : "Reply"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={onStartReply}
+              className="text-[10px] uppercase tracking-widest text-primary hover:underline"
+            >
+              Reply
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
