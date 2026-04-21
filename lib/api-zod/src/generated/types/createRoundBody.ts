@@ -19,4 +19,6 @@ export interface CreateRoundBody {
   status?: CreateRoundBodyStatus;
   opensAt?: Date;
   closesAt?: Date;
+  /** Version this round is layered against. Defaults to the song's current version when omitted. */
+  baseVersionId?: string | null;
 }

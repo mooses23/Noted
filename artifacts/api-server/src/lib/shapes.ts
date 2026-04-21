@@ -53,6 +53,7 @@ export const toRound = (
   status: r.status,
   opensAt: r.opensAt ? r.opensAt.toISOString() : null,
   closesAt: r.closesAt ? r.closesAt.toISOString() : null,
+  baseVersionId: r.baseVersionId ?? null,
   createdAt: r.createdAt.toISOString(),
   updatedAt: r.updatedAt.toISOString(),
   commitCount: extras?.commitCount ?? null,

@@ -21,6 +21,7 @@ export interface Round {
   status: RoundStatus;
   opensAt?: Date | null;
   closesAt?: Date | null;
+  baseVersionId?: string | null;
   createdAt: Date;
   updatedAt?: Date;
   commitCount?: number | null;

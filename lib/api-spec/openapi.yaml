@@ -1036,6 +1036,10 @@ components:
           type: string
           format: date-time
           nullable: true
+        baseVersionId:
+          type: string
+          format: uuid
+          nullable: true
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         commitCount:
@@ -1259,6 +1263,11 @@ components:
         status: { type: string, enum: [draft, open, closed, merged] }
         opensAt: { type: string, format: date-time }
         closesAt: { type: string, format: date-time }
+        baseVersionId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Version this round is layered against. Defaults to the song's current version when omitted.
 
     SubmitCommitBody:
       type: object
@@ -1535,6 +1544,11 @@ components:
         status: { type: string, enum: [draft, open, closed, merged] }
         opensAt: { type: string, format: date-time }
         closesAt: { type: string, format: date-time }
+        baseVersionId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Version this round is layered against. Pass null to clear.
 
     AdvancePhaseBody:
       type: object

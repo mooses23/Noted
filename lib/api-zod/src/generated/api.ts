@@ -136,6 +136,7 @@ export const GetFeaturedSongResponse = zod.object({
             status: zod.enum(["draft", "open", "closed", "merged"]),
             opensAt: zod.coerce.date().nullish(),
             closesAt: zod.coerce.date().nullish(),
+            baseVersionId: zod.string().uuid().nullish(),
             createdAt: zod.coerce.date(),
             updatedAt: zod.coerce.date().optional(),
             commitCount: zod.number().nullish(),
@@ -234,6 +235,7 @@ export const GetSongResponse = zod
           status: zod.enum(["draft", "open", "closed", "merged"]),
           opensAt: zod.coerce.date().nullish(),
           closesAt: zod.coerce.date().nullish(),
+          baseVersionId: zod.string().uuid().nullish(),
           createdAt: zod.coerce.date(),
           updatedAt: zod.coerce.date().optional(),
           commitCount: zod.number().nullish(),
@@ -330,6 +332,7 @@ export const GetSongBySlugResponse = zod
           status: zod.enum(["draft", "open", "closed", "merged"]),
           opensAt: zod.coerce.date().nullish(),
           closesAt: zod.coerce.date().nullish(),
+          baseVersionId: zod.string().uuid().nullish(),
           createdAt: zod.coerce.date(),
           updatedAt: zod.coerce.date().optional(),
           commitCount: zod.number().nullish(),
@@ -428,6 +431,7 @@ export const ListRoundsForSongResponseItem = zod.object({
   status: zod.enum(["draft", "open", "closed", "merged"]),
   opensAt: zod.coerce.date().nullish(),
   closesAt: zod.coerce.date().nullish(),
+  baseVersionId: zod.string().uuid().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date().optional(),
   commitCount: zod.number().nullish(),
@@ -546,6 +550,7 @@ export const GetRoundResponse = zod.object({
   status: zod.enum(["draft", "open", "closed", "merged"]),
   opensAt: zod.coerce.date().nullish(),
   closesAt: zod.coerce.date().nullish(),
+  baseVersionId: zod.string().uuid().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date().optional(),
   commitCount: zod.number().nullish(),
@@ -726,6 +731,7 @@ export const GetCommitResponse = zod
         status: zod.enum(["draft", "open", "closed", "merged"]),
         opensAt: zod.coerce.date().nullish(),
         closesAt: zod.coerce.date().nullish(),
+        baseVersionId: zod.string().uuid().nullish(),
         createdAt: zod.coerce.date(),
         updatedAt: zod.coerce.date().optional(),
         commitCount: zod.number().nullish(),
@@ -815,6 +821,7 @@ export const SubmitCommitResponse = zod
         status: zod.enum(["draft", "open", "closed", "merged"]),
         opensAt: zod.coerce.date().nullish(),
         closesAt: zod.coerce.date().nullish(),
+        baseVersionId: zod.string().uuid().nullish(),
         createdAt: zod.coerce.date(),
         updatedAt: zod.coerce.date().optional(),
         commitCount: zod.number().nullish(),
@@ -973,6 +980,7 @@ export const ListMyDraftsResponseItem = zod.object({
       status: zod.enum(["draft", "open", "closed", "merged"]),
       opensAt: zod.coerce.date().nullish(),
       closesAt: zod.coerce.date().nullish(),
+      baseVersionId: zod.string().uuid().nullish(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date().optional(),
       commitCount: zod.number().nullish(),
@@ -1052,6 +1060,7 @@ export const CreateDraftResponse = zod.object({
       status: zod.enum(["draft", "open", "closed", "merged"]),
       opensAt: zod.coerce.date().nullish(),
       closesAt: zod.coerce.date().nullish(),
+      baseVersionId: zod.string().uuid().nullish(),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date().optional(),
       commitCount: zod.number().nullish(),
@@ -1119,6 +1128,7 @@ export const SubmitDraftResponse = zod
         status: zod.enum(["draft", "open", "closed", "merged"]),
         opensAt: zod.coerce.date().nullish(),
         closesAt: zod.coerce.date().nullish(),
+        baseVersionId: zod.string().uuid().nullish(),
         createdAt: zod.coerce.date(),
         updatedAt: zod.coerce.date().optional(),
         commitCount: zod.number().nullish(),
@@ -1376,6 +1386,13 @@ export const AdminCreateRoundBody = zod.object({
   status: zod.enum(["draft", "open", "closed", "merged"]).optional(),
   opensAt: zod.coerce.date().optional(),
   closesAt: zod.coerce.date().optional(),
+  baseVersionId: zod
+    .string()
+    .uuid()
+    .nullish()
+    .describe(
+      "Version this round is layered against. Defaults to the song's current version when omitted.",
+    ),
 });
 
 export const AdminCreateRoundResponse = zod.object({
@@ -1390,6 +1407,7 @@ export const AdminCreateRoundResponse = zod.object({
   status: zod.enum(["draft", "open", "closed", "merged"]),
   opensAt: zod.coerce.date().nullish(),
   closesAt: zod.coerce.date().nullish(),
+  baseVersionId: zod.string().uuid().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date().optional(),
   commitCount: zod.number().nullish(),
@@ -1409,6 +1427,11 @@ export const AdminUpdateRoundBody = zod.object({
   status: zod.enum(["draft", "open", "closed", "merged"]).optional(),
   opensAt: zod.coerce.date().optional(),
   closesAt: zod.coerce.date().optional(),
+  baseVersionId: zod
+    .string()
+    .uuid()
+    .nullish()
+    .describe("Version this round is layered against. Pass null to clear."),
 });
 
 export const AdminUpdateRoundResponse = zod.object({
@@ -1423,6 +1446,7 @@ export const AdminUpdateRoundResponse = zod.object({
   status: zod.enum(["draft", "open", "closed", "merged"]),
   opensAt: zod.coerce.date().nullish(),
   closesAt: zod.coerce.date().nullish(),
+  baseVersionId: zod.string().uuid().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date().optional(),
   commitCount: zod.number().nullish(),
@@ -1518,6 +1542,7 @@ export const AdminSetCommitStatusResponse = zod
         status: zod.enum(["draft", "open", "closed", "merged"]),
         opensAt: zod.coerce.date().nullish(),
         closesAt: zod.coerce.date().nullish(),
+        baseVersionId: zod.string().uuid().nullish(),
         createdAt: zod.coerce.date(),
         updatedAt: zod.coerce.date().optional(),
         commitCount: zod.number().nullish(),
