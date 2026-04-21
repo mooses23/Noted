@@ -143,8 +143,10 @@ router.delete(
 
     await db.delete(commentsTable).where(eq(commentsTable.id, commentId));
 
-    // Audit when an admin removes someone else's comment.
-    if (profile.isAdmin && existing.authorId !== profile.id) {
+    // Audit any admin-triggered deletion (including self-authored), so the
+    // moderation trail is complete. Author-only deletes of their own
+    // comments are not logged.
+    if (profile.isAdmin) {
       await db.insert(adminActionsTable).values({
         actorId: profile.id,
         action: "delete_comment",
@@ -152,6 +154,7 @@ router.delete(
           commentId: existing.id,
           songId: existing.songId,
           authorId: existing.authorId,
+          selfAuthored: existing.authorId === profile.id,
           body: existing.body.slice(0, 500),
         }),
       });
