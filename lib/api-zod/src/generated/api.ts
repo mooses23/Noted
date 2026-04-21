@@ -130,6 +130,20 @@ export const GetFeaturedSongResponse = zod.object({
             createdAt: zod.coerce.date(),
           }),
         ),
+        thirdPartyCredits: zod.array(
+          zod.object({
+            id: zod.string().uuid(),
+            songId: zod.string().uuid(),
+            title: zod.string(),
+            author: zod.string(),
+            sourceUrl: zod.string(),
+            licenseName: zod.string(),
+            licenseUrl: zod.string(),
+            role: zod.string().nullish(),
+            sortOrder: zod.number(),
+            createdAt: zod.coerce.date(),
+          }),
+        ),
         totalCommits: zod.number(),
         totalVotes: zod.number(),
         versionCount: zod.number(),
@@ -209,6 +223,20 @@ export const GetSongResponse = zod
           createdAt: zod.coerce.date(),
         }),
       ),
+      thirdPartyCredits: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          songId: zod.string().uuid(),
+          title: zod.string(),
+          author: zod.string(),
+          sourceUrl: zod.string(),
+          licenseName: zod.string(),
+          licenseUrl: zod.string(),
+          role: zod.string().nullish(),
+          sortOrder: zod.number(),
+          createdAt: zod.coerce.date(),
+        }),
+      ),
       totalCommits: zod.number(),
       totalVotes: zod.number(),
       versionCount: zod.number(),
@@ -283,6 +311,20 @@ export const GetSongBySlugResponse = zod
           fileUrl: zod.string(),
           originalFilename: zod.string(),
           sizeBytes: zod.number().nullish(),
+          createdAt: zod.coerce.date(),
+        }),
+      ),
+      thirdPartyCredits: zod.array(
+        zod.object({
+          id: zod.string().uuid(),
+          songId: zod.string().uuid(),
+          title: zod.string(),
+          author: zod.string(),
+          sourceUrl: zod.string(),
+          licenseName: zod.string(),
+          licenseUrl: zod.string(),
+          role: zod.string().nullish(),
+          sortOrder: zod.number(),
           createdAt: zod.coerce.date(),
         }),
       ),
@@ -1062,6 +1104,88 @@ export const AdminSetCommitStatusResponse = zod
         .nullish(),
     }),
   );
+
+export const AdminCreateSongCreditParams = zod.object({
+  songId: zod.coerce.string().uuid(),
+});
+
+export const AdminCreateSongCreditBody = zod.object({
+  title: zod.string().min(1),
+  author: zod.string().min(1),
+  sourceUrl: zod.string().min(1),
+  licenseName: zod.string().min(1),
+  licenseUrl: zod.string().min(1),
+  role: zod.string().optional(),
+  sortOrder: zod.number().optional(),
+});
+
+export const AdminCreateSongCreditResponse = zod.object({
+  id: zod.string().uuid(),
+  songId: zod.string().uuid(),
+  title: zod.string(),
+  author: zod.string(),
+  sourceUrl: zod.string(),
+  licenseName: zod.string(),
+  licenseUrl: zod.string(),
+  role: zod.string().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+
+export const AdminReorderSongCreditsParams = zod.object({
+  songId: zod.coerce.string().uuid(),
+});
+
+export const AdminReorderSongCreditsBody = zod.object({
+  creditIds: zod.array(zod.string().uuid()),
+});
+
+export const AdminReorderSongCreditsResponseItem = zod.object({
+  id: zod.string().uuid(),
+  songId: zod.string().uuid(),
+  title: zod.string(),
+  author: zod.string(),
+  sourceUrl: zod.string(),
+  licenseName: zod.string(),
+  licenseUrl: zod.string(),
+  role: zod.string().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+export const AdminReorderSongCreditsResponse = zod.array(
+  AdminReorderSongCreditsResponseItem,
+);
+
+export const AdminUpdateSongCreditParams = zod.object({
+  creditId: zod.coerce.string().uuid(),
+});
+
+export const AdminUpdateSongCreditBody = zod.object({
+  title: zod.string().min(1).optional(),
+  author: zod.string().min(1).optional(),
+  sourceUrl: zod.string().min(1).optional(),
+  licenseName: zod.string().min(1).optional(),
+  licenseUrl: zod.string().min(1).optional(),
+  role: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+});
+
+export const AdminUpdateSongCreditResponse = zod.object({
+  id: zod.string().uuid(),
+  songId: zod.string().uuid(),
+  title: zod.string(),
+  author: zod.string(),
+  sourceUrl: zod.string(),
+  licenseName: zod.string(),
+  licenseUrl: zod.string(),
+  role: zod.string().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+
+export const AdminDeleteSongCreditParams = zod.object({
+  creditId: zod.coerce.string().uuid(),
+});
 
 /**
  * @summary Publish a new official version with merged commits

@@ -517,6 +517,70 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/CommitDetail" }
 
+  /admin/songs/{songId}/credits:
+    post:
+      operationId: adminCreateSongCredit
+      tags: [admin]
+      parameters:
+        - $ref: "#/components/parameters/SongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateSongCreditBody" }
+      responses:
+        "200":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SongCredit" }
+
+  /admin/songs/{songId}/credits/reorder:
+    post:
+      operationId: adminReorderSongCredits
+      tags: [admin]
+      parameters:
+        - $ref: "#/components/parameters/SongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReorderSongCreditsBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/SongCredit" }
+
+  /admin/credits/{creditId}:
+    patch:
+      operationId: adminUpdateSongCredit
+      tags: [admin]
+      parameters:
+        - $ref: "#/components/parameters/CreditId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateSongCreditBody" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SongCredit" }
+    delete:
+      operationId: adminDeleteSongCredit
+      tags: [admin]
+      parameters:
+        - $ref: "#/components/parameters/CreditId"
+      responses:
+        "204":
+          description: Deleted
+
   /admin/versions:
     post:
       operationId: adminCreateVersion
@@ -549,6 +613,11 @@ components:
     CommitId:
       in: path
       name: commitId
+      required: true
+      schema: { type: string, format: uuid }
+    CreditId:
+      in: path
+      name: creditId
       required: true
       schema: { type: string, format: uuid }
   schemas:
@@ -635,7 +704,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/Song"
         - type: object
-          required: [currentRound, currentVersion, stems, totalCommits, totalVotes, versionCount]
+          required: [currentRound, currentVersion, stems, thirdPartyCredits, totalCommits, totalVotes, versionCount]
           properties:
             currentRound:
               nullable: true
@@ -646,9 +715,29 @@ components:
             stems:
               type: array
               items: { $ref: "#/components/schemas/SongFile" }
+            thirdPartyCredits:
+              type: array
+              items: { $ref: "#/components/schemas/SongCredit" }
             totalCommits: { type: integer }
             totalVotes: { type: integer }
             versionCount: { type: integer }
+
+    SongCredit:
+      type: object
+      required: [id, songId, title, author, sourceUrl, licenseName, licenseUrl, sortOrder, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        songId: { type: string, format: uuid }
+        title: { type: string }
+        author: { type: string }
+        sourceUrl: { type: string }
+        licenseName: { type: string }
+        licenseUrl: { type: string }
+        role:
+          type: string
+          nullable: true
+        sortOrder: { type: integer }
+        createdAt: { type: string, format: date-time }
 
     FeaturedSong:
       type: object
@@ -953,6 +1042,39 @@ components:
             name: { type: string }
             size: { type: integer }
             contentType: { type: string }
+
+    CreateSongCreditBody:
+      type: object
+      required: [title, author, sourceUrl, licenseName, licenseUrl]
+      properties:
+        title: { type: string, minLength: 1 }
+        author: { type: string, minLength: 1 }
+        sourceUrl: { type: string, minLength: 1 }
+        licenseName: { type: string, minLength: 1 }
+        licenseUrl: { type: string, minLength: 1 }
+        role: { type: string }
+        sortOrder: { type: integer }
+
+    UpdateSongCreditBody:
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        author: { type: string, minLength: 1 }
+        sourceUrl: { type: string, minLength: 1 }
+        licenseName: { type: string, minLength: 1 }
+        licenseUrl: { type: string, minLength: 1 }
+        role:
+          type: string
+          nullable: true
+        sortOrder: { type: integer }
+
+    ReorderSongCreditsBody:
+      type: object
+      required: [creditIds]
+      properties:
+        creditIds:
+          type: array
+          items: { type: string, format: uuid }
 
     UpdateRoundBody:
       type: object

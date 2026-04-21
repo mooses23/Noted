@@ -109,10 +109,24 @@ export interface Version {
   createdAt: string;
 }
 
+export interface SongCredit {
+  id: string;
+  songId: string;
+  title: string;
+  author: string;
+  sourceUrl: string;
+  licenseName: string;
+  licenseUrl: string;
+  role?: string | null;
+  sortOrder: number;
+  createdAt: string;
+}
+
 export type SongDetail = Song & {
   currentRound: Round | null;
   currentVersion: Version | null;
   stems: SongFile[];
+  thirdPartyCredits: SongCredit[];
   totalCommits: number;
   totalVotes: number;
   versionCount: number;
@@ -367,6 +381,40 @@ export interface RequestUploadUrlResponse {
   uploadURL: string;
   objectPath: string;
   metadata?: RequestUploadUrlResponseMetadata;
+}
+
+export interface CreateSongCreditBody {
+  /** @minLength 1 */
+  title: string;
+  /** @minLength 1 */
+  author: string;
+  /** @minLength 1 */
+  sourceUrl: string;
+  /** @minLength 1 */
+  licenseName: string;
+  /** @minLength 1 */
+  licenseUrl: string;
+  role?: string;
+  sortOrder?: number;
+}
+
+export interface UpdateSongCreditBody {
+  /** @minLength 1 */
+  title?: string;
+  /** @minLength 1 */
+  author?: string;
+  /** @minLength 1 */
+  sourceUrl?: string;
+  /** @minLength 1 */
+  licenseName?: string;
+  /** @minLength 1 */
+  licenseUrl?: string;
+  role?: string | null;
+  sortOrder?: number;
+}
+
+export interface ReorderSongCreditsBody {
+  creditIds: string[];
 }
 
 export type UpdateRoundBodyStatus =

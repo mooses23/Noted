@@ -3,18 +3,20 @@ import {
   db,
   songsTable,
   songFilesTable,
+  songCreditsTable,
   roundsTable,
   commitsTable,
   versionsTable,
   versionMergesTable,
   adminActionsTable,
 } from "@workspace/db";
-import { and, eq, desc, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, desc, inArray, sql } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { fetchCommitRows, fetchCommitById, fetchMergedVersionForCommit } from "../lib/commitQueries";
 import {
   toSong,
   toSongFile,
+  toSongCredit,
   toRound,
   toVersion,
   toCommitSummary,
@@ -29,6 +31,9 @@ import {
   AdminUpdateRoundBody,
   AdminSetCommitStatusBody,
   AdminCreateVersionBody,
+  AdminCreateSongCreditBody,
+  AdminUpdateSongCreditBody,
+  AdminReorderSongCreditsBody,
 } from "@workspace/api-zod";
 import { z } from "zod";
 
@@ -309,6 +314,205 @@ router.post("/versions", async (req: Request, res: Response) => {
   const all = await versionsWithMergesForSong(b.songId);
   const full = all.find((v) => v.id === result.id);
   res.json(full);
+});
+
+function isSafeHttpUrl(value: string): boolean {
+  try {
+    const u = new URL(value);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+router.post("/songs/:songId/credits", async (req: Request, res: Response) => {
+  const b = parseBody(AdminCreateSongCreditBody, req.body, res);
+  if (!b) return;
+  if (!isSafeHttpUrl(b.sourceUrl) || !isSafeHttpUrl(b.licenseUrl)) {
+    res
+      .status(400)
+      .json({ error: "sourceUrl and licenseUrl must be http(s) URLs" });
+    return;
+  }
+  const songId = req.params.songId as string;
+  const actor = (req as Request & { profile: { id: string } }).profile;
+
+  const created = await db.transaction(async (tx) => {
+    const [song] = await tx
+      .select({ id: songsTable.id })
+      .from(songsTable)
+      .where(eq(songsTable.id, songId))
+      .for("update");
+    if (!song) return null;
+
+    let sortOrder = b.sortOrder;
+    if (sortOrder === undefined) {
+      const [{ maxSort }] = await tx
+        .select({
+          maxSort: sql<number>`coalesce(max(${songCreditsTable.sortOrder}), -1)::int`,
+        })
+        .from(songCreditsTable)
+        .where(eq(songCreditsTable.songId, songId));
+      sortOrder = (maxSort ?? -1) + 1;
+    }
+    const [row] = await tx
+      .insert(songCreditsTable)
+      .values({
+        songId,
+        title: b.title,
+        author: b.author,
+        sourceUrl: b.sourceUrl,
+        licenseName: b.licenseName,
+        licenseUrl: b.licenseUrl,
+        role: b.role ?? null,
+        sortOrder,
+      })
+      .returning();
+    await tx.insert(adminActionsTable).values({
+      actorId: actor.id,
+      action: "create_song_credit",
+      payload: JSON.stringify({ songId, creditId: row!.id, title: row!.title }),
+    });
+    return row!;
+  });
+
+  if (!created) {
+    res.status(404).json({ error: "Song not found" });
+    return;
+  }
+  res.json(toSongCredit(created));
+});
+
+router.patch("/credits/:creditId", async (req: Request, res: Response) => {
+  const b = parseBody(AdminUpdateSongCreditBody, req.body, res);
+  if (!b) return;
+  if (b.sourceUrl !== undefined && !isSafeHttpUrl(b.sourceUrl)) {
+    res.status(400).json({ error: "sourceUrl must be an http(s) URL" });
+    return;
+  }
+  if (b.licenseUrl !== undefined && !isSafeHttpUrl(b.licenseUrl)) {
+    res.status(400).json({ error: "licenseUrl must be an http(s) URL" });
+    return;
+  }
+  const creditId = req.params.creditId as string;
+  const actor = (req as Request & { profile: { id: string } }).profile;
+
+  const updated = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .update(songCreditsTable)
+      .set({
+        ...(b.title !== undefined ? { title: b.title } : {}),
+        ...(b.author !== undefined ? { author: b.author } : {}),
+        ...(b.sourceUrl !== undefined ? { sourceUrl: b.sourceUrl } : {}),
+        ...(b.licenseName !== undefined ? { licenseName: b.licenseName } : {}),
+        ...(b.licenseUrl !== undefined ? { licenseUrl: b.licenseUrl } : {}),
+        ...(b.role !== undefined ? { role: b.role ?? null } : {}),
+        ...(b.sortOrder !== undefined ? { sortOrder: b.sortOrder } : {}),
+      })
+      .where(eq(songCreditsTable.id, creditId))
+      .returning();
+    if (!row) return null;
+    await tx.insert(adminActionsTable).values({
+      actorId: actor.id,
+      action: "update_song_credit",
+      payload: JSON.stringify({
+        songId: row.songId,
+        creditId: row.id,
+        changed: Object.keys(b),
+      }),
+    });
+    return row;
+  });
+
+  if (!updated) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  res.json(toSongCredit(updated));
+});
+
+router.delete("/credits/:creditId", async (req: Request, res: Response) => {
+  const creditId = req.params.creditId as string;
+  const actor = (req as Request & { profile: { id: string } }).profile;
+  const deleted = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .delete(songCreditsTable)
+      .where(eq(songCreditsTable.id, creditId))
+      .returning();
+    if (!row) return null;
+    await tx.insert(adminActionsTable).values({
+      actorId: actor.id,
+      action: "delete_song_credit",
+      payload: JSON.stringify({ songId: row.songId, creditId: row.id, title: row.title }),
+    });
+    return row;
+  });
+  if (!deleted) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  res.status(204).send();
+});
+
+router.post("/songs/:songId/credits/reorder", async (req: Request, res: Response) => {
+  const b = parseBody(AdminReorderSongCreditsBody, req.body, res);
+  if (!b) return;
+  const songId = req.params.songId as string;
+  const actor = (req as Request & { profile: { id: string } }).profile;
+
+  // Reject duplicate ids upfront.
+  const uniqueIds = new Set(b.creditIds);
+  if (uniqueIds.size !== b.creditIds.length) {
+    res.status(400).json({ error: "creditIds must contain unique values" });
+    return;
+  }
+
+  const result = await db.transaction(async (tx) => {
+    // Lock the song's credit rows for the duration of this transaction so
+    // that concurrent create/delete cannot race with us.
+    const existing = await tx
+      .select({ id: songCreditsTable.id })
+      .from(songCreditsTable)
+      .where(eq(songCreditsTable.songId, songId))
+      .for("update");
+    const existingIds = new Set(existing.map((r) => r.id));
+    if (
+      existingIds.size !== uniqueIds.size ||
+      !b.creditIds.every((id) => existingIds.has(id))
+    ) {
+      return { error: "set_mismatch" as const };
+    }
+    for (let i = 0; i < b.creditIds.length; i++) {
+      await tx
+        .update(songCreditsTable)
+        .set({ sortOrder: i })
+        .where(
+          and(
+            eq(songCreditsTable.id, b.creditIds[i]!),
+            eq(songCreditsTable.songId, songId),
+          ),
+        );
+    }
+    await tx.insert(adminActionsTable).values({
+      actorId: actor.id,
+      action: "reorder_song_credits",
+      payload: JSON.stringify({ songId, creditIds: b.creditIds }),
+    });
+    const rows = await tx
+      .select()
+      .from(songCreditsTable)
+      .where(eq(songCreditsTable.songId, songId))
+      .orderBy(asc(songCreditsTable.sortOrder), asc(songCreditsTable.createdAt));
+    return { rows };
+  });
+
+  if ("error" in result) {
+    res
+      .status(400)
+      .json({ error: "creditIds must include exactly all credits for this song" });
+    return;
+  }
+  res.json(result.rows.map(toSongCredit));
 });
 
 export default router;

@@ -141,6 +141,49 @@ export default function SongDetail() {
             </div>
           </section>
 
+          {/* Third-party Music Credits (per-song, data-driven) */}
+          {song.thirdPartyCredits.length > 0 && (
+            <section>
+              <h2 className="text-2xl font-serif font-bold mb-6">Music Credits</h2>
+              <div className="bg-card border border-border p-6 space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  This track includes third-party material used under the
+                  licenses noted below.
+                </p>
+                <ul className="space-y-2 text-sm">
+                  {song.thirdPartyCredits.map((credit) => (
+                    <li key={credit.id} className="leading-snug">
+                      <a
+                        href={credit.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium hover:text-primary underline-offset-2 hover:underline"
+                      >
+                        &ldquo;{credit.title}&rdquo;
+                      </a>{" "}
+                      <span className="text-muted-foreground">
+                        — {credit.author}
+                      </span>{" "}
+                      <a
+                        href={credit.licenseUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs uppercase tracking-widest text-primary hover:underline"
+                      >
+                        {credit.licenseName}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+                <div className="pt-2 text-xs uppercase tracking-widest">
+                  <Link href="/licenses" className="text-primary hover:underline">
+                    All third-party licenses →
+                  </Link>
+                </div>
+              </div>
+            </section>
+          )}
+
           {/* Stats */}
           <section>
             <h2 className="text-2xl font-serif font-bold mb-6">Track Stats</h2>

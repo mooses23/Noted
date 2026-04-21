@@ -7,6 +7,7 @@
  */
 import type { Round } from "./round";
 import type { Song } from "./song";
+import type { SongCredit } from "./songCredit";
 import type { SongFile } from "./songFile";
 import type { Version } from "./version";
 
@@ -14,6 +15,7 @@ export type SongDetail = Song & {
   currentRound: Round | null;
   currentVersion: Version | null;
   stems: SongFile[];
+  thirdPartyCredits: SongCredit[];
   totalCommits: number;
   totalVotes: number;
   versionCount: number;

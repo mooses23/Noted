@@ -15,6 +15,7 @@ import SubmitCommit from "./pages/songs/submit";
 import Commits from "./pages/commits";
 import CommitDetail from "./pages/commits/commit";
 import Credits from "./pages/credits";
+import Licenses from "./pages/licenses";
 import Manifesto from "./pages/manifesto";
 import Rules from "./pages/rules";
 import Rights from "./pages/rights";
@@ -196,6 +197,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               <li><Link href="/manifesto" className="hover:text-foreground transition-colors">Manifesto</Link></li>
               <li><Link href="/rules" className="hover:text-foreground transition-colors">Rules</Link></li>
               <li><Link href="/rights" className="hover:text-foreground transition-colors">Rights & Licensing</Link></li>
+              <li><Link href="/licenses" className="hover:text-foreground transition-colors">Third-Party Licenses</Link></li>
               <li><Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link></li>
               <li><Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link></li>
             </ul>
@@ -252,6 +254,7 @@ function ClerkProviderWithRoutes() {
             <Route path="/commits/:commitId" component={CommitDetail} />
             
             <Route path="/credits" component={Credits} />
+            <Route path="/licenses" component={Licenses} />
             <Route path="/manifesto" component={Manifesto} />
             <Route path="/rules" component={Rules} />
             <Route path="/rights" component={Rights} />

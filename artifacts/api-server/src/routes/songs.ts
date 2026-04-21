@@ -3,14 +3,15 @@ import {
   db,
   songsTable,
   songFilesTable,
+  songCreditsTable,
   roundsTable,
   versionsTable,
   commitsTable,
   votesTable,
 } from "@workspace/db";
-import { and, eq, desc, sql } from "drizzle-orm";
+import { and, eq, asc, desc, sql } from "drizzle-orm";
 import { z } from "zod";
-import { toSong, toSongFile, toRound, toVersion } from "../lib/shapes";
+import { toSong, toSongFile, toRound, toVersion, toSongCredit } from "../lib/shapes";
 
 const router: IRouter = Router();
 
@@ -49,7 +50,7 @@ router.get("/songs", async (req: Request, res: Response) => {
 });
 
 async function buildSongDetail(song: typeof songsTable.$inferSelect) {
-  const [files, rounds, versions, commitStats, voteStats] = await Promise.all([
+  const [files, rounds, versions, credits, commitStats, voteStats] = await Promise.all([
     db
       .select()
       .from(songFilesTable)
@@ -64,6 +65,11 @@ async function buildSongDetail(song: typeof songsTable.$inferSelect) {
       .from(versionsTable)
       .where(eq(versionsTable.songId, song.id))
       .orderBy(desc(versionsTable.versionNumber)),
+    db
+      .select()
+      .from(songCreditsTable)
+      .where(eq(songCreditsTable.songId, song.id))
+      .orderBy(asc(songCreditsTable.sortOrder), asc(songCreditsTable.createdAt)),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(commitsTable)
@@ -87,6 +93,7 @@ async function buildSongDetail(song: typeof songsTable.$inferSelect) {
     currentRound: currentRound ? toRound(currentRound) : null,
     currentVersion: currentVersion ? toVersion(currentVersion) : null,
     stems: stems.map(toSongFile),
+    thirdPartyCredits: credits.map(toSongCredit),
     totalCommits: commitStats[0]?.count ?? 0,
     totalVotes: voteStats[0]?.count ?? 0,
     versionCount: versions.length,

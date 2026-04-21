@@ -5,6 +5,7 @@ import {
   type Commit,
   type Version,
   type Profile,
+  type SongCredit,
 } from "@workspace/db";
 
 export const toSong = (s: Song) => ({
@@ -63,6 +64,19 @@ export const toVersion = (v: Version) => ({
   officialMixUrl: v.officialMixUrl,
   isCurrent: v.isCurrent,
   createdAt: v.createdAt.toISOString(),
+});
+
+export const toSongCredit = (c: SongCredit) => ({
+  id: c.id,
+  songId: c.songId,
+  title: c.title,
+  author: c.author,
+  sourceUrl: c.sourceUrl,
+  licenseName: c.licenseName,
+  licenseUrl: c.licenseUrl,
+  role: c.role ?? null,
+  sortOrder: c.sortOrder,
+  createdAt: c.createdAt.toISOString(),
 });
 
 export const toContributor = (p: Profile) => ({
