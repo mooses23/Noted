@@ -89,6 +89,8 @@ export default function SubmitCommit() {
     );
   }
 
+  const isAccent = song?.currentRound?.kind === "accent";
+
   if (!song || !song.currentRound) {
     return (
       <div className="container mx-auto px-6 py-20 max-w-2xl text-center">
@@ -168,8 +170,14 @@ export default function SubmitCommit() {
                 }}
               />
               <UploadCloud className="w-8 h-8 mx-auto mb-4 text-muted-foreground" />
-              <div className="font-bold mb-1">Click or drag audio file here</div>
-              <div className="text-sm text-muted-foreground">WAV, FLAC, AIFF, MP3, M4A, OGG, AAC (Max 60 MB)</div>
+              <div className="font-bold mb-1">
+                {isAccent ? "Drop your one-shot or short take" : "Click or drag audio file here"}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {isAccent
+                  ? "Short is fine — claps, stabs, vocal ad-libs. Max 60 MB."
+                  : "WAV, FLAC, AIFF, MP3, M4A, OGG, AAC (Max 60 MB)"}
+              </div>
             </div>
           ) : (
             <div className="border border-border p-4 bg-background flex flex-col gap-4">
@@ -200,7 +208,7 @@ export default function SubmitCommit() {
         <section className="bg-card border border-border p-6 md:p-8">
           <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
             <span className="w-6 h-6 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-sans">2</span>
-            Commit Details
+            {isAccent ? "Tag & Confirm" : "Commit Details"}
           </h2>
           
           <Form {...form}>
@@ -211,28 +219,40 @@ export default function SubmitCommit() {
                   name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="uppercase tracking-widest text-xs text-muted-foreground">Commit Title</FormLabel>
+                      <FormLabel className="uppercase tracking-widest text-xs text-muted-foreground">
+                        {isAccent ? "Tag your accent" : "Commit Title"}
+                      </FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. Vintage P-Bass with flatwounds" className="h-12 rounded-none bg-background border-border focus-visible:ring-primary" {...field} />
+                        <Input
+                          placeholder={
+                            isAccent
+                              ? "e.g. 808 clap, downbeat 3"
+                              : "e.g. Vintage P-Bass with flatwounds"
+                          }
+                          className="h-12 rounded-none bg-background border-border focus-visible:ring-primary"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="note"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="uppercase tracking-widest text-xs text-muted-foreground">Notes for the Curator (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Gear used, intent, mixing suggestions..." className="min-h-[100px] rounded-none bg-background border-border focus-visible:ring-primary" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {!isAccent && (
+                  <FormField
+                    control={form.control}
+                    name="note"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="uppercase tracking-widest text-xs text-muted-foreground">Notes for the Curator (Optional)</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Gear used, intent, mixing suggestions..." className="min-h-[100px] rounded-none bg-background border-border focus-visible:ring-primary" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
               </div>
 
               <div className="space-y-4 pt-6 border-t border-border">
@@ -280,7 +300,11 @@ export default function SubmitCommit() {
                 className="w-full h-14 rounded-none text-base uppercase tracking-widest font-bold"
                 disabled={!objectPath || submitMutation.isPending}
               >
-                {submitMutation.isPending ? "Submitting..." : "Submit Commit"}
+                {submitMutation.isPending
+                  ? "Submitting..."
+                  : isAccent
+                    ? "Submit Accent"
+                    : "Submit Commit"}
                 {!submitMutation.isPending && <ArrowRight className="w-5 h-5 ml-2" />}
               </Button>
             </form>

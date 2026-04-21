@@ -153,9 +153,15 @@ export default function SongDetail() {
           {song.currentRound && (
             <section>
               <h2 className="text-2xl font-serif font-bold mb-6 flex items-center gap-2">
-                Submissions <span className="text-muted-foreground font-sans text-sm font-normal">({song.currentRound.commitCount || 0})</span>
+                {song.currentRound.kind === "accent" ? "Accent submissions" : "Submissions"}{" "}
+                <span className="text-muted-foreground font-sans text-sm font-normal">
+                  ({song.currentRound.commitCount || 0})
+                </span>
               </h2>
-              <CommitsList roundId={song.currentRound.id} />
+              <CommitsList
+                roundId={song.currentRound.id}
+                roundKind={song.currentRound.kind}
+              />
             </section>
           )}
         </div>
@@ -257,7 +263,7 @@ export default function SongDetail() {
   );
 }
 
-function CommitsList({ roundId }: { roundId: string }) {
+function CommitsList({ roundId, roundKind }: { roundId: string; roundKind: string }) {
   const params = { sort: ListCommitsForRoundSort.top };
   const queryKey = getListCommitsForRoundQueryKey(roundId, params);
   const { data: commits, isLoading } = useListCommitsForRound(roundId, params, {
@@ -289,6 +295,56 @@ function CommitsList({ roundId }: { roundId: string }) {
 
   if (isLoading) return <div className="space-y-4">{[1,2,3].map(i => <div key={i} className="h-24 bg-card border border-border animate-pulse" />)}</div>;
   if (!commits?.length) return <div className="p-8 text-center border border-border bg-card text-muted-foreground">No submissions yet. Be the first!</div>;
+
+  if (roundKind === "accent") {
+    return (
+      <div className="flex flex-wrap gap-2">
+        {commits.map((commit) => {
+          const isOwner = !!user?.profile?.id && user.profile.id === commit.contributorId;
+          const isPending =
+            (voteMutation.isPending || unvoteMutation.isPending) &&
+            (voteMutation.variables?.commitId === commit.id ||
+              unvoteMutation.variables?.commitId === commit.id);
+          return (
+            <div
+              key={commit.id}
+              className="border border-border bg-card hover:border-primary/40 transition-colors px-3 py-2 flex items-center gap-3 group"
+            >
+              <AudioPlayer
+                url={commit.audioFileUrl}
+                title={commit.title}
+                artist={commit.contributor.displayName}
+                compact
+                className="bg-transparent border-0"
+              />
+              <div className="min-w-0 max-w-[180px]">
+                <Link
+                  href={`/commits/${commit.id}`}
+                  className="block text-sm font-bold truncate hover:text-primary"
+                >
+                  {commit.title}
+                </Link>
+                <div className="text-[0.65rem] uppercase tracking-widest text-muted-foreground truncate">
+                  {commit.contributor.displayName}
+                </div>
+              </div>
+              <Button
+                variant={commit.hasVoted ? "default" : "outline"}
+                size="sm"
+                className="rounded-none uppercase tracking-widest text-xs h-8 px-2 flex items-center gap-1 flex-shrink-0"
+                onClick={() => toggleVote(commit.id, !!commit.hasVoted)}
+                disabled={isOwner || isPending}
+                title={isOwner ? "You can't vote on your own accent" : ""}
+              >
+                <ThumbsUp className={`w-3 h-3 ${commit.hasVoted ? "fill-current" : ""}`} />
+                <span className="font-mono">{commit.voteCount}</span>
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
