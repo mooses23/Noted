@@ -366,8 +366,9 @@ export default function SubmitCommit() {
           <Section number={3} title="Stack & align">
             <p className="text-xs text-muted-foreground mb-3">
               Preview your Note over the base. Drag the start offset until they
-              line up. (This preview is in your browser — final mixing happens
-              when a curator merges your Note.)
+              line up — your chosen offset is saved with the Note so curators
+              and listeners hear it at the same alignment. Final mixing still
+              happens when a curator merges your Note.
             </p>
             <WaveformStack
               layers={stackLayers}
