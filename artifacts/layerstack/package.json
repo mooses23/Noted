@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
-    "build": "vite build --config vite.config.ts",
+    "build": "vite build --config vite.config.ts && node scripts/build-vercel-output.mjs",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
+    "@clerk/react": "^6.4.0",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.4",
     "@radix-ui/react-alert-dialog": "^1.1.7",
@@ -41,21 +42,21 @@
     "@replit/vite-plugin-cartographer": "catalog:",
     "@replit/vite-plugin-dev-banner": "catalog:",
     "@replit/vite-plugin-runtime-error-modal": "catalog:",
+    "@sentry/vite-plugin": "^5.2.0",
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react": "catalog:",
-    "@workspace/api-client-react": "workspace:*",
-    "@workspace/object-storage-web": "workspace:*",
-    "@workspace/seed-content": "workspace:*",
-    "@clerk/react": "^6.4.0",
     "@uppy/aws-s3": "^5.0.0",
     "@uppy/core": "^5.0.0",
     "@uppy/dashboard": "^5.0.0",
     "@uppy/react": "^5.0.0",
+    "@vitejs/plugin-react": "catalog:",
+    "@workspace/api-client-react": "workspace:*",
+    "@workspace/object-storage-web": "workspace:*",
+    "@workspace/seed-content": "workspace:*",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "cmdk": "^1.1.1",
@@ -80,5 +81,8 @@
     "vite": "catalog:",
     "wouter": "^3.3.5",
     "zod": "catalog:"
+  },
+  "dependencies": {
+    "@sentry/react": "^10.49.0"
   }
 }

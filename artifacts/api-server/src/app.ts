@@ -1,4 +1,10 @@
-import express, { type Express } from "express";
+import { initSentry, Sentry } from "./lib/sentry";
+
+// Sentry must be initialized before importing the rest of the app so its
+// auto-instrumentation can patch http/express/etc.
+initSentry();
+
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
@@ -71,5 +77,38 @@ app.use(express.urlencoded({ extended: true }));
 app.use(clerkMiddleware());
 
 app.use("/api", router);
+
+// Sentry's express error handler must come after routes but before any other
+// custom error middleware so it captures unhandled exceptions with request
+// context. It only acts when Sentry was actually initialized.
+Sentry.setupExpressErrorHandler(app);
+
+// Final JSON error handler: keeps responses consistent and avoids leaking
+// stack traces. The handler signature must declare 4 args for Express to
+// recognize it as an error middleware.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+  const status =
+    typeof (err as { status?: unknown })?.status === "number"
+      ? (err as { status: number }).status
+      : typeof (err as { statusCode?: unknown })?.statusCode === "number"
+        ? (err as { statusCode: number }).statusCode
+        : 500;
+
+  if (status >= 500) {
+    logger.error({ err, reqId: req.id }, "Unhandled error in request");
+    // Tag so dashboards/alerts can filter `http_status_code:5xx` reliably.
+    Sentry.withScope((scope) => {
+      scope.setTag("http_status_code", String(status));
+      scope.setTag("http_method", req.method);
+      Sentry.captureException(err);
+    });
+  }
+
+  if (res.headersSent) return;
+  res.status(status).json({
+    error: status >= 500 ? "Internal Server Error" : (err as Error)?.message ?? "Error",
+  });
+});
 
 export default app;

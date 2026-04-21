@@ -14,10 +14,12 @@ The production topology is **two Vercel projects** sharing the same Git repo:
 …backed by **one Supabase project** providing Postgres and a **Google Cloud
 Storage** bucket (with a service account) providing object storage.
 
-The web project uses a Vercel **rewrite** (configured in the Vercel dashboard,
-see step 4) to forward `/api/*` to the API project, so the browser sees a
-single origin. This avoids CORS work and keeps Clerk session cookies on one
-host.
+The web project uses a Vercel **rewrite** to forward `/api/*` to the API
+project, so the browser sees a single origin. This avoids CORS work and
+keeps Clerk session cookies on one host. The rewrite is generated at build
+time from the `API_REWRITE_TARGET` env var (see step 4.7), so operators set
+one env var per environment instead of editing committed config and preview
+deployments automatically point at the matching API preview deployment.
 
 ---
 
@@ -114,14 +116,27 @@ the schema. To force a destructive push (only on a database you own), use
    - `NODE_ENV=production`
    - `VITE_CLERK_PUBLISHABLE_KEY` (same Clerk publishable key as the API
      project)
-7. **Add the API rewrite via the Vercel dashboard** (do this *before* the
-   first deploy, or redeploy afterwards):
-   - **Project Settings → Rewrites → Add Rewrite**
-   - **Source**: `/api/:path*`
-   - **Destination**: `https://<api-host>/api/:path*` — substitute the host
-     from step 3 (e.g. `https://layerstack-api.vercel.app`).
-   - This rewrite is intentionally **not** committed to `vercel.json`,
-     because the API host is a per-environment value chosen at deploy time.
+7. **Set `API_REWRITE_TARGET`** — the API origin the build-time script will
+   wire `/api/*` to. The build will fail loudly if this is missing, so set
+   it before the first deploy. Configure it **per environment** in
+   **Project Settings → Environment Variables**:
+
+   | Environment | Value                                                                                  |
+   | ----------- | -------------------------------------------------------------------------------------- |
+   | Production  | `https://layerstack-api.vercel.app` (or your custom API domain)                        |
+   | Preview     | `https://layerstack-api-git-${VERCEL_GIT_COMMIT_REF}-<team-slug>.vercel.app`           |
+
+   The build script (`scripts/build-vercel-output.mjs`) substitutes
+   `${VAR}` placeholders against the build environment, so the Preview
+   value above resolves to the matching API preview branch deployment for
+   every PR — no manual edits per branch. Find your `<team-slug>` in the
+   API project's preview deployment URL (Vercel uses the pattern
+   `<project>-git-<branch>-<team>.vercel.app`).
+
+   The script writes `.vercel/output/config.json` via the Vercel Build
+   Output API, so the rewrite ships with the deployment artifact itself.
+   This is why `vercel.json` no longer needs to declare any rewrites and
+   no dashboard rewrite needs to be configured.
 8. **Deploy**.
 9. Go back to the API project and set `ALLOWED_ORIGINS` to include the web
    project's URL (e.g. `https://layerstack-web.vercel.app`). Redeploy the
@@ -194,6 +209,158 @@ To prepare GCS for the Vercel deployment:
 Local Replit dev is unchanged — it continues to use the sidecar
 automatically as long as `REPL_ID` is set, which Replit always provides.
 
+## 8. Observability with Sentry (recommended)
+
+The app ships with optional [Sentry](https://sentry.io) integration on both
+the React frontend and the Express API. When the relevant DSN env vars are
+unset, Sentry is fully disabled and the app behaves exactly as before — so
+this section is opt-in but strongly recommended for any real deployment.
+
+### 8.1 Create the Sentry projects
+
+1. Sign up at <https://sentry.io> and create an organization.
+2. Create **two** projects in that org so frontend and backend errors don't
+   commingle on one dashboard:
+   - `layerstack-web` → platform **React**
+   - `layerstack-api` → platform **Node.js / Express**
+3. From each project's **Settings → Client Keys (DSN)** copy the DSN URL.
+
+### 8.2 Wire env vars
+
+On the **`layerstack-web`** Vercel project add (Production + Preview):
+
+| Variable                          | Value                                              |
+| --------------------------------- | -------------------------------------------------- |
+| `VITE_SENTRY_DSN`                 | DSN of the `layerstack-web` Sentry project         |
+| `VITE_SENTRY_ENVIRONMENT`         | `production` (Vercel sets `VERCEL_ENV` for preview) |
+| `VITE_SENTRY_RELEASE`             | `$VERCEL_GIT_COMMIT_SHA`                           |
+| `VITE_SENTRY_TRACES_SAMPLE_RATE`  | optional, defaults to `0.1` when DSN is set (see §8.6) |
+| `SENTRY_AUTH_TOKEN`               | Internal Integration token with `project:releases` |
+| `SENTRY_ORG`                      | Sentry org slug                                    |
+| `SENTRY_PROJECT`                  | `layerstack-web`                                   |
+
+When all three of `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT`
+are present at build time, the Vite plugin uploads the production bundle's
+source maps to Sentry, so stack traces resolve to original TS/TSX. Without
+those vars the build still succeeds — source maps just don't get uploaded.
+
+On the **`layerstack-api`** Vercel project add (Production + Preview):
+
+| Variable                       | Value                                              |
+| ------------------------------ | -------------------------------------------------- |
+| `SENTRY_DSN`                   | DSN of the `layerstack-api` Sentry project         |
+| `SENTRY_ENVIRONMENT`           | optional, defaults to `VERCEL_ENV`/`NODE_ENV`      |
+| `SENTRY_RELEASE`               | optional, defaults to `VERCEL_GIT_COMMIT_SHA`      |
+| `SENTRY_TRACES_SAMPLE_RATE`    | optional, defaults to `0.1` when DSN is set (see §8.6) |
+
+The API serverless handler initializes Sentry on cold start, captures any
+unhandled Express errors via `Sentry.setupExpressErrorHandler`, and flushes
+events at the end of every invocation so nothing is dropped when the
+function freezes. The long-lived Replit dev server additionally captures
+process-level `unhandledRejection` and `uncaughtException`.
+
+### 8.3 Alerting on error spikes
+
+In each Sentry project: **Alerts → Create Alert Rule → Issue Alerts**.
+
+Recommended rules to start with (tweak thresholds to your traffic):
+
+- **Frontend (`layerstack-web`)**: *"Number of events in an issue is more
+  than 25 in 5 minutes"* → notify a Slack channel or PagerDuty.
+- **API (`layerstack-api`)**: *"Number of events in an issue is more than
+  10 in 5 minutes"* → same on-call destination.
+- Add an **Issue Owners** rule so new errors auto-assign by file path.
+
+Issue-count rules above only fire when a *single* issue spikes. To catch a
+broad outage where dozens of unique errors appear at once (e.g. Supabase is
+down), also add a **Metric Alert** in each project:
+
+- **Frontend**: *"Number of errors is above 100 in 5 minutes"*.
+- **API**: *"Number of HTTP 5xx errors (\`event.tag.http_status_code:5xx\`)
+  is above 30 in 5 minutes"*. The API error middleware tags Sentry events
+  with the response status, so this filter is reliable. Pair it with
+  *"% of sessions with errors > 5%"* for user-impact paging.
+
+Connect the destination once via **Settings → Integrations** (Slack,
+PagerDuty, Opsgenie, Discord, MS Teams all supported) and reference it in
+the alert rule's *Action*.
+
+### 8.4 Long-term log retention via Vercel Log Drains
+
+Vercel keeps function logs for 1 hour on Hobby and 1 day on Pro by default.
+For post-incident forensics, configure a log drain so logs flow into a
+long-term store:
+
+1. Go to **Vercel Team → Settings → Log Drains → Add Log Drain**.
+2. Pick a **Source**: include both `layerstack-web` and `layerstack-api`.
+3. Pick a **Destination** — common choices:
+   - **Datadog / Logtail / Axiom**: paste the destination URL + token from
+     the provider's Vercel integration page.
+   - **HTTP**: any endpoint that accepts JSON Lines (e.g. an internal
+     Logstash). Use the **Secret** to verify the `x-vercel-signature`
+     header on receipt.
+4. Save. Logs start streaming within a minute. Verify by triggering a
+   request and looking for it in the destination dashboard.
+
+### 8.5 Dashboards to bookmark
+
+After step 8.2 your team should bookmark:
+
+- `https://<org>.sentry.io/projects/layerstack-web/` — frontend errors
+- `https://<org>.sentry.io/projects/layerstack-api/` — backend errors
+- `https://<org>.sentry.io/performance/?project=layerstack-api` — API
+  latency by route (p50/p95/p99). Populated automatically once
+  `SENTRY_DSN` is set; see §8.6 to tune the sample rate.
+- `https://vercel.com/<team>/layerstack-web/logs` — raw frontend logs
+- `https://vercel.com/<team>/layerstack-api/logs` — raw backend logs
+- The log-drain destination dashboard (Datadog / Axiom / etc.)
+
+### 8.6 Performance tracing (sampled APM)
+
+Error reporting only catches outright crashes. Slow Postgres queries, slow
+GCS reads, sluggish cold starts, and gradual route latency regressions
+won't surface in the Issues tab — users feel them long before anything
+"breaks". Sentry's performance tracing fills that gap by sampling a
+fraction of requests as **transactions**, breaking each one down into
+spans (HTTP handler → DB query → GCS call → response).
+
+**Defaults.** When `SENTRY_DSN` / `VITE_SENTRY_DSN` are set, both
+artifacts default `tracesSampleRate` to **`0.1`** (10% of
+requests/sessions). That is enough volume to populate the Performance tab
+with stable p50/p95/p99 per route on low-to-mid traffic, while keeping
+transaction usage well inside the Sentry Team plan's monthly quota. Set
+`SENTRY_TRACES_SAMPLE_RATE` / `VITE_SENTRY_TRACES_SAMPLE_RATE` to
+override.
+
+**Trade-off.**
+
+| Sample rate | What you get                                           | Cost                                         |
+| ----------- | ------------------------------------------------------ | -------------------------------------------- |
+| `0`         | Errors only. No latency visibility.                    | Free (covered by error quota).               |
+| `0.1`       | Stable p50/p95/p99 per route at meaningful traffic.    | ~10% of requests count toward txn quota.     |
+| `0.5`+      | Catches rare slow spans (e.g. cold starts, p99 tails). | Halfway to "trace everything" pricing.       |
+| `1.0`       | Every request traced; full waterfall always available. | Only feasible on high-volume paid plans.     |
+
+Rule of thumb: start at `0.1`. If the Performance tab feels too sparse
+for a low-traffic route, bump to `0.5`. If you're getting close to your
+monthly transaction limit (Sentry → Stats → Usage), drop back to `0.05`
+or disable the noisier surface (typically the frontend).
+
+**Validating it's on.** After deploying with the env vars set:
+
+1. Hit a few API routes in production.
+2. Open Sentry → Performance → filter by `project:layerstack-api`.
+   Within a minute or two you should see transactions like
+   `GET /api/rounds`, `POST /api/commits`, etc. with duration
+   distributions.
+3. Click a transaction to inspect spans — you'll see the Express
+   handler, downstream `pg.query` calls, and any `gcs.*` operations.
+4. From a transaction's "Trace" view, set up an **alert** under
+   Performance → Alerts: e.g. *"p95 of `GET /api/rounds` > 1s for 5
+   minutes"* → notify the same Slack/PagerDuty destination wired in
+   §8.3. This is the bit that makes latency regressions actually wake
+   somebody up before users complain.
+
 ## Troubleshooting
 
 - **`ECONNREFUSED` or pooler errors on cold start.** Check that `DATABASE_URL`
@@ -211,8 +378,20 @@ automatically as long as `REPL_ID` is set, which Replit always provides.
 - **Clerk redirects fail.** Make sure the web URL is listed in Clerk's
   allowed domains and that `VITE_CLERK_PUBLISHABLE_KEY` matches the same
   Clerk instance whose `CLERK_SECRET_KEY` you set on the API project.
-- **404 on `/api/*` from the web project.** The dashboard rewrite from
-  step 4.7 hasn't been added yet, or its destination host is wrong.
+- **404 on `/api/*` from the web project.** `API_REWRITE_TARGET` is unset
+  or points at the wrong host for this environment. Check the web
+  project's build logs — `scripts/build-vercel-output.mjs` prints the
+  resolved API origin on every deploy. Update the env var on the affected
+  environment and redeploy.
+- **Build fails with `API_REWRITE_TARGET is not set`.** Add the env var
+  to the failing environment (Production or Preview) per step 4.7, then
+  redeploy.
+- **Build fails with `references ${VAR} but that environment variable is
+  not set`.** You used `${VERCEL_GIT_COMMIT_REF}` (or similar) in the
+  Preview value, but the deploy is running in an environment where that
+  variable isn't populated. For Vercel previews, `VERCEL_GIT_COMMIT_REF`
+  is provided automatically — make sure the env var is scoped to the
+  Preview environment only.
 
 ## Local Replit development
 
