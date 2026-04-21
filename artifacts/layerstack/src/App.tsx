@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from '@clerk/react';
+import { setSentryUser } from "@/lib/sentry";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect, Link } from 'wouter';
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -111,6 +112,14 @@ function ClerkQueryClientCacheInvalidator() {
         queryClient.clear();
       }
       prevUserIdRef.current = userId;
+      setSentryUser(
+        user
+          ? {
+              id: user.id,
+              email: user.primaryEmailAddress?.emailAddress ?? null,
+            }
+          : null,
+      );
     });
     return unsubscribe;
   }, [addListener, queryClient]);

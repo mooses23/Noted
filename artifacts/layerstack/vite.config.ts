@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 const rawPort = process.env.PORT;
 const isBuild = process.argv.includes("build");
@@ -29,6 +30,23 @@ export default defineConfig({
     react(),
     tailwindcss(),
     runtimeErrorOverlay(),
+    // Upload source maps to Sentry on production builds. Only activates when
+    // SENTRY_AUTH_TOKEN, SENTRY_ORG, and SENTRY_PROJECT are all set, so local
+    // dev and preview builds without those secrets continue to work normally.
+    ...(process.env.SENTRY_AUTH_TOKEN &&
+    process.env.SENTRY_ORG &&
+    process.env.SENTRY_PROJECT
+      ? [
+          sentryVitePlugin({
+            org: process.env.SENTRY_ORG,
+            project: process.env.SENTRY_PROJECT,
+            authToken: process.env.SENTRY_AUTH_TOKEN,
+            release: process.env.VITE_SENTRY_RELEASE
+              ? { name: process.env.VITE_SENTRY_RELEASE }
+              : undefined,
+          }),
+        ]
+      : []),
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
@@ -54,6 +72,10 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    // Source maps are required for Sentry to symbolicate frontend errors.
+    // The Sentry Vite plugin uploads and then strips them from the public
+    // bundle when SENTRY_AUTH_TOKEN is set; otherwise they ship as-is.
+    sourcemap: true,
   },
   server: {
     port,

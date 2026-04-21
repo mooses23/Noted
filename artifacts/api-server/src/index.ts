@@ -1,7 +1,20 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { Sentry } from "./lib/sentry";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
+
+// Long-lived server only: surface crashes that escape the request lifecycle.
+// On Vercel this file isn't used (the serverless handler in `api/[...all].ts`
+// runs instead), so these listeners are local/dev hardening.
+process.on("unhandledRejection", (reason) => {
+  logger.error({ err: reason }, "Unhandled promise rejection");
+  Sentry.captureException(reason);
+});
+process.on("uncaughtException", (err) => {
+  logger.fatal({ err }, "Uncaught exception");
+  Sentry.captureException(err);
+});
 
 const rawPort = process.env["PORT"];
 

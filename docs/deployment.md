@@ -194,6 +194,108 @@ To prepare GCS for the Vercel deployment:
 Local Replit dev is unchanged — it continues to use the sidecar
 automatically as long as `REPL_ID` is set, which Replit always provides.
 
+## 8. Observability with Sentry (recommended)
+
+The app ships with optional [Sentry](https://sentry.io) integration on both
+the React frontend and the Express API. When the relevant DSN env vars are
+unset, Sentry is fully disabled and the app behaves exactly as before — so
+this section is opt-in but strongly recommended for any real deployment.
+
+### 8.1 Create the Sentry projects
+
+1. Sign up at <https://sentry.io> and create an organization.
+2. Create **two** projects in that org so frontend and backend errors don't
+   commingle on one dashboard:
+   - `layerstack-web` → platform **React**
+   - `layerstack-api` → platform **Node.js / Express**
+3. From each project's **Settings → Client Keys (DSN)** copy the DSN URL.
+
+### 8.2 Wire env vars
+
+On the **`layerstack-web`** Vercel project add (Production + Preview):
+
+| Variable                          | Value                                              |
+| --------------------------------- | -------------------------------------------------- |
+| `VITE_SENTRY_DSN`                 | DSN of the `layerstack-web` Sentry project         |
+| `VITE_SENTRY_ENVIRONMENT`         | `production` (Vercel sets `VERCEL_ENV` for preview) |
+| `VITE_SENTRY_RELEASE`             | `$VERCEL_GIT_COMMIT_SHA`                           |
+| `SENTRY_AUTH_TOKEN`               | Internal Integration token with `project:releases` |
+| `SENTRY_ORG`                      | Sentry org slug                                    |
+| `SENTRY_PROJECT`                  | `layerstack-web`                                   |
+
+When all three of `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT`
+are present at build time, the Vite plugin uploads the production bundle's
+source maps to Sentry, so stack traces resolve to original TS/TSX. Without
+those vars the build still succeeds — source maps just don't get uploaded.
+
+On the **`layerstack-api`** Vercel project add (Production + Preview):
+
+| Variable                       | Value                                              |
+| ------------------------------ | -------------------------------------------------- |
+| `SENTRY_DSN`                   | DSN of the `layerstack-api` Sentry project         |
+| `SENTRY_ENVIRONMENT`           | optional, defaults to `VERCEL_ENV`/`NODE_ENV`      |
+| `SENTRY_RELEASE`               | optional, defaults to `VERCEL_GIT_COMMIT_SHA`      |
+| `SENTRY_TRACES_SAMPLE_RATE`    | optional, `0` by default (set `0.1` to enable APM) |
+
+The API serverless handler initializes Sentry on cold start, captures any
+unhandled Express errors via `Sentry.setupExpressErrorHandler`, and flushes
+events at the end of every invocation so nothing is dropped when the
+function freezes. The long-lived Replit dev server additionally captures
+process-level `unhandledRejection` and `uncaughtException`.
+
+### 8.3 Alerting on error spikes
+
+In each Sentry project: **Alerts → Create Alert Rule → Issue Alerts**.
+
+Recommended rules to start with (tweak thresholds to your traffic):
+
+- **Frontend (`layerstack-web`)**: *"Number of events in an issue is more
+  than 25 in 5 minutes"* → notify a Slack channel or PagerDuty.
+- **API (`layerstack-api`)**: *"Number of events in an issue is more than
+  10 in 5 minutes"* → same on-call destination.
+- Add an **Issue Owners** rule so new errors auto-assign by file path.
+
+Issue-count rules above only fire when a *single* issue spikes. To catch a
+broad outage where dozens of unique errors appear at once (e.g. Supabase is
+down), also add a **Metric Alert** in each project:
+
+- **Frontend**: *"Number of errors is above 100 in 5 minutes"*.
+- **API**: *"Number of HTTP 5xx errors (\`event.tag.http_status_code:5xx\`)
+  is above 30 in 5 minutes"*. The API error middleware tags Sentry events
+  with the response status, so this filter is reliable. Pair it with
+  *"% of sessions with errors > 5%"* for user-impact paging.
+
+Connect the destination once via **Settings → Integrations** (Slack,
+PagerDuty, Opsgenie, Discord, MS Teams all supported) and reference it in
+the alert rule's *Action*.
+
+### 8.4 Long-term log retention via Vercel Log Drains
+
+Vercel keeps function logs for 1 hour on Hobby and 1 day on Pro by default.
+For post-incident forensics, configure a log drain so logs flow into a
+long-term store:
+
+1. Go to **Vercel Team → Settings → Log Drains → Add Log Drain**.
+2. Pick a **Source**: include both `layerstack-web` and `layerstack-api`.
+3. Pick a **Destination** — common choices:
+   - **Datadog / Logtail / Axiom**: paste the destination URL + token from
+     the provider's Vercel integration page.
+   - **HTTP**: any endpoint that accepts JSON Lines (e.g. an internal
+     Logstash). Use the **Secret** to verify the `x-vercel-signature`
+     header on receipt.
+4. Save. Logs start streaming within a minute. Verify by triggering a
+   request and looking for it in the destination dashboard.
+
+### 8.5 Dashboards to bookmark
+
+After step 8.2 your team should bookmark:
+
+- `https://<org>.sentry.io/projects/layerstack-web/` — frontend errors
+- `https://<org>.sentry.io/projects/layerstack-api/` — backend errors
+- `https://vercel.com/<team>/layerstack-web/logs` — raw frontend logs
+- `https://vercel.com/<team>/layerstack-api/logs` — raw backend logs
+- The log-drain destination dashboard (Datadog / Axiom / etc.)
+
 ## Troubleshooting
 
 - **`ECONNREFUSED` or pooler errors on cold start.** Check that `DATABASE_URL`
