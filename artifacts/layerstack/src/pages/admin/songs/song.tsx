@@ -11,7 +11,13 @@ import {
   useAdminSetCommitStatus,
   useAdminListCommits,
   useAdminCreateVersion,
+  useAdminCreateSongCredit,
+  useAdminUpdateSongCredit,
+  useAdminDeleteSongCredit,
+  useAdminReorderSongCredits,
+  useGetSongBySlug,
   getGetSongQueryKey,
+  getGetSongBySlugQueryKey,
   getListSongFilesQueryKey,
   getListRoundsForSongQueryKey,
   getAdminListCommitsQueryKey,
@@ -23,6 +29,7 @@ import {
 import type {
   CommitSummary,
   Round,
+  SongCredit,
   SongFile,
 } from "@workspace/api-client-react";
 import { useUpload } from "@workspace/object-storage-web";
@@ -37,7 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, ArrowLeft, Check, X, Upload, FileAudio, Save } from "lucide-react";
+import { Plus, ArrowLeft, Check, X, Upload, FileAudio, Save, Trash2, ArrowUp, ArrowDown, ExternalLink } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -181,6 +188,12 @@ export default function AdminSongDetail() {
             Files & Stems
           </TabsTrigger>
           <TabsTrigger
+            value="credits"
+            className="rounded-none h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase tracking-widest text-xs px-6"
+          >
+            Music Credits
+          </TabsTrigger>
+          <TabsTrigger
             value="settings"
             className="rounded-none h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase tracking-widest text-xs px-6"
           >
@@ -224,6 +237,10 @@ export default function AdminSongDetail() {
 
         <TabsContent value="files" className="mt-6 border-none p-0 outline-none">
           <FilesPanel songId={songId} files={files ?? []} />
+        </TabsContent>
+
+        <TabsContent value="credits" className="mt-6 border-none p-0 outline-none">
+          <CreditsPanel songId={songId} songSlug={song.slug} />
         </TabsContent>
 
         <TabsContent value="settings" className="mt-6 border-none p-0 outline-none">
@@ -909,6 +926,406 @@ function SettingsPanel({
       >
         <Save className="w-4 h-4 mr-2" /> Save
       </Button>
+    </div>
+  );
+}
+
+function CreditsPanel({ songId, songSlug }: { songId: string; songSlug: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: song, isLoading } = useGetSongBySlug(songSlug, {
+    query: { enabled: !!songSlug, queryKey: getGetSongBySlugQueryKey(songSlug) },
+  });
+  const credits: SongCredit[] = song?.thirdPartyCredits ?? [];
+
+  const create = useAdminCreateSongCredit();
+  const reorder = useAdminReorderSongCredits();
+
+  const [draft, setDraft] = useState({
+    title: "",
+    author: "",
+    sourceUrl: "",
+    licenseName: "CC BY 3.0",
+    licenseUrl: "https://creativecommons.org/licenses/by/3.0/",
+    role: "",
+  });
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: getGetSongBySlugQueryKey(songSlug) });
+    queryClient.invalidateQueries({ queryKey: getGetSongQueryKey(songId) });
+  };
+
+  const handleAdd = () => {
+    if (!draft.title || !draft.author || !draft.sourceUrl || !draft.licenseName || !draft.licenseUrl) {
+      toast({
+        title: "Missing fields",
+        description: "Title, author, source URL, license name, and license URL are required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    create.mutate(
+      {
+        songId,
+        data: {
+          title: draft.title,
+          author: draft.author,
+          sourceUrl: draft.sourceUrl,
+          licenseName: draft.licenseName,
+          licenseUrl: draft.licenseUrl,
+          role: draft.role || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast({ title: "Credit added" });
+          setDraft({
+            title: "",
+            author: "",
+            sourceUrl: "",
+            licenseName: draft.licenseName,
+            licenseUrl: draft.licenseUrl,
+            role: "",
+          });
+          invalidate();
+        },
+        onError: (err) =>
+          toast({ title: "Failed", description: String(err), variant: "destructive" }),
+      },
+    );
+  };
+
+  const move = (index: number, dir: -1 | 1) => {
+    const target = index + dir;
+    if (target < 0 || target >= credits.length) return;
+    const ids = credits.map((c) => c.id);
+    [ids[index], ids[target]] = [ids[target]!, ids[index]!];
+    reorder.mutate(
+      { songId, data: { creditIds: ids } },
+      {
+        onSuccess: () => invalidate(),
+        onError: (err) =>
+          toast({ title: "Reorder failed", description: String(err), variant: "destructive" }),
+      },
+    );
+  };
+
+  return (
+    <div className="bg-card border border-border p-8 space-y-6">
+      <div>
+        <h2 className="text-2xl font-serif font-bold mb-2">Music Credits</h2>
+        <p className="text-sm text-muted-foreground">
+          Third-party assets used in this song. These appear on the public song page and on the
+          Licenses page. Add one entry per attributed track or asset.
+        </p>
+      </div>
+
+      <div className="border border-dashed border-border p-4 space-y-3">
+        <h3 className="font-serif font-bold">Add Credit</h3>
+        <div className="grid md:grid-cols-2 gap-3">
+          <div>
+            <Label>Title</Label>
+            <Input
+              value={draft.title}
+              onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+              placeholder="e.g. Drum loop 04"
+              className="rounded-none"
+            />
+          </div>
+          <div>
+            <Label>Author</Label>
+            <Input
+              value={draft.author}
+              onChange={(e) => setDraft({ ...draft, author: e.target.value })}
+              placeholder="e.g. Jane Doe"
+              className="rounded-none"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Label>Source URL</Label>
+            <Input
+              value={draft.sourceUrl}
+              onChange={(e) => setDraft({ ...draft, sourceUrl: e.target.value })}
+              placeholder="https://commons.wikimedia.org/..."
+              className="rounded-none"
+            />
+          </div>
+          <div>
+            <Label>License Name</Label>
+            <Input
+              value={draft.licenseName}
+              onChange={(e) => setDraft({ ...draft, licenseName: e.target.value })}
+              className="rounded-none"
+            />
+          </div>
+          <div>
+            <Label>License URL</Label>
+            <Input
+              value={draft.licenseUrl}
+              onChange={(e) => setDraft({ ...draft, licenseUrl: e.target.value })}
+              className="rounded-none"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Label>Role / Usage (optional)</Label>
+            <Input
+              value={draft.role}
+              onChange={(e) => setDraft({ ...draft, role: e.target.value })}
+              placeholder="e.g. Drum loop, Background vocals"
+              className="rounded-none"
+            />
+          </div>
+        </div>
+        <Button
+          onClick={handleAdd}
+          disabled={create.isPending}
+          className="rounded-none uppercase tracking-widest text-xs"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          {create.isPending ? "Adding…" : "Add Credit"}
+        </Button>
+      </div>
+
+      <div>
+        <h3 className="font-serif font-bold mb-3">
+          Existing Credits ({credits.length})
+        </h3>
+        {isLoading ? (
+          <div className="p-6 text-center text-muted-foreground">Loading…</div>
+        ) : credits.length === 0 ? (
+          <div className="p-8 text-center border border-dashed border-border text-muted-foreground text-sm">
+            No third-party credits yet for this song.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {credits.map((credit, i) => (
+              <CreditRow
+                key={credit.id}
+                credit={credit}
+                index={i}
+                total={credits.length}
+                onMove={move}
+                onChanged={invalidate}
+                reordering={reorder.isPending}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CreditRow({
+  credit,
+  index,
+  total,
+  onMove,
+  onChanged,
+  reordering,
+}: {
+  credit: SongCredit;
+  index: number;
+  total: number;
+  onMove: (index: number, dir: -1 | 1) => void;
+  onChanged: () => void;
+  reordering: boolean;
+}) {
+  const { toast } = useToast();
+  const update = useAdminUpdateSongCredit();
+  const del = useAdminDeleteSongCredit();
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({
+    title: credit.title,
+    author: credit.author,
+    sourceUrl: credit.sourceUrl,
+    licenseName: credit.licenseName,
+    licenseUrl: credit.licenseUrl,
+    role: credit.role ?? "",
+  });
+
+  const save = () => {
+    update.mutate(
+      {
+        creditId: credit.id,
+        data: {
+          title: form.title,
+          author: form.author,
+          sourceUrl: form.sourceUrl,
+          licenseName: form.licenseName,
+          licenseUrl: form.licenseUrl,
+          role: form.role || null,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast({ title: "Credit updated" });
+          setEditing(false);
+          onChanged();
+        },
+        onError: (err) =>
+          toast({ title: "Update failed", description: String(err), variant: "destructive" }),
+      },
+    );
+  };
+
+  const remove = () => {
+    if (!confirm(`Delete credit "${credit.title}"?`)) return;
+    del.mutate(
+      { creditId: credit.id },
+      {
+        onSuccess: () => {
+          toast({ title: "Credit deleted" });
+          onChanged();
+        },
+        onError: (err) =>
+          toast({ title: "Delete failed", description: String(err), variant: "destructive" }),
+      },
+    );
+  };
+
+  if (editing) {
+    return (
+      <div className="border border-primary p-4 space-y-3 bg-background">
+        <div className="grid md:grid-cols-2 gap-3">
+          <div>
+            <Label>Title</Label>
+            <Input
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              className="rounded-none"
+            />
+          </div>
+          <div>
+            <Label>Author</Label>
+            <Input
+              value={form.author}
+              onChange={(e) => setForm({ ...form, author: e.target.value })}
+              className="rounded-none"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Label>Source URL</Label>
+            <Input
+              value={form.sourceUrl}
+              onChange={(e) => setForm({ ...form, sourceUrl: e.target.value })}
+              className="rounded-none"
+            />
+          </div>
+          <div>
+            <Label>License Name</Label>
+            <Input
+              value={form.licenseName}
+              onChange={(e) => setForm({ ...form, licenseName: e.target.value })}
+              className="rounded-none"
+            />
+          </div>
+          <div>
+            <Label>License URL</Label>
+            <Input
+              value={form.licenseUrl}
+              onChange={(e) => setForm({ ...form, licenseUrl: e.target.value })}
+              className="rounded-none"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Label>Role / Usage</Label>
+            <Input
+              value={form.role}
+              onChange={(e) => setForm({ ...form, role: e.target.value })}
+              className="rounded-none"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            onClick={save}
+            disabled={update.isPending}
+            className="rounded-none uppercase tracking-widest text-xs"
+          >
+            <Save className="w-4 h-4 mr-2" /> Save
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setEditing(false)}
+            disabled={update.isPending}
+            className="rounded-none uppercase tracking-widest text-xs"
+          >
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-border p-4 flex items-start justify-between gap-4 bg-background">
+      <div className="flex flex-col items-center gap-1 pt-1">
+        <button
+          type="button"
+          onClick={() => onMove(index, -1)}
+          disabled={index === 0 || reordering}
+          className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+          aria-label="Move up"
+        >
+          <ArrowUp className="w-4 h-4" />
+        </button>
+        <span className="text-xs text-muted-foreground">{index + 1}</span>
+        <button
+          type="button"
+          onClick={() => onMove(index, 1)}
+          disabled={index === total - 1 || reordering}
+          className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+          aria-label="Move down"
+        >
+          <ArrowDown className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-bold truncate">{credit.title}</div>
+        <div className="text-sm text-muted-foreground truncate">
+          by {credit.author}
+          {credit.role ? ` · ${credit.role}` : ""}
+        </div>
+        <div className="text-xs text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-1">
+          <a
+            href={credit.sourceUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-foreground inline-flex items-center gap-1"
+          >
+            Source <ExternalLink className="w-3 h-3" />
+          </a>
+          <a
+            href={credit.licenseUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-foreground inline-flex items-center gap-1"
+          >
+            {credit.licenseName} <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+      </div>
+      <div className="flex gap-2 shrink-0">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setEditing(true)}
+          className="rounded-none uppercase tracking-widest text-xs"
+        >
+          Edit
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={remove}
+          disabled={del.isPending}
+          className="rounded-none uppercase tracking-widest text-xs border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
     </div>
   );
 }

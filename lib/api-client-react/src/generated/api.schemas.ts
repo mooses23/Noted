@@ -383,6 +383,40 @@ export interface RequestUploadUrlResponse {
   metadata?: RequestUploadUrlResponseMetadata;
 }
 
+export interface CreateSongCreditBody {
+  /** @minLength 1 */
+  title: string;
+  /** @minLength 1 */
+  author: string;
+  /** @minLength 1 */
+  sourceUrl: string;
+  /** @minLength 1 */
+  licenseName: string;
+  /** @minLength 1 */
+  licenseUrl: string;
+  role?: string;
+  sortOrder?: number;
+}
+
+export interface UpdateSongCreditBody {
+  /** @minLength 1 */
+  title?: string;
+  /** @minLength 1 */
+  author?: string;
+  /** @minLength 1 */
+  sourceUrl?: string;
+  /** @minLength 1 */
+  licenseName?: string;
+  /** @minLength 1 */
+  licenseUrl?: string;
+  role?: string | null;
+  sortOrder?: number;
+}
+
+export interface ReorderSongCreditsBody {
+  creditIds: string[];
+}
+
 export type UpdateRoundBodyStatus =
   (typeof UpdateRoundBodyStatus)[keyof typeof UpdateRoundBodyStatus];
 

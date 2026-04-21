@@ -26,6 +26,7 @@ import type {
   CommitSummary,
   CreateRoundBody,
   CreateSongBody,
+  CreateSongCreditBody,
   CreditEntry,
   CurrentUser,
   FeaturedSong,
@@ -37,15 +38,18 @@ import type {
   LogDownload200,
   LogDownloadBody,
   PublicStats,
+  ReorderSongCreditsBody,
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
   Round,
   Song,
+  SongCredit,
   SongDetail,
   SongFile,
   SubmitCommitBody,
   UpdateRoundBody,
   UpdateSongBody,
+  UpdateSongCreditBody,
   VersionWithMerges,
   VoteResult,
 } from "./api.schemas";
@@ -2528,6 +2532,328 @@ export const useAdminSetCommitStatus = <
   TContext
 > => {
   return useMutation(getAdminSetCommitStatusMutationOptions(options));
+};
+
+export const getAdminCreateSongCreditUrl = (songId: string) => {
+  return `/api/admin/songs/${songId}/credits`;
+};
+
+export const adminCreateSongCredit = async (
+  songId: string,
+  createSongCreditBody: CreateSongCreditBody,
+  options?: RequestInit,
+): Promise<SongCredit> => {
+  return customFetch<SongCredit>(getAdminCreateSongCreditUrl(songId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createSongCreditBody),
+  });
+};
+
+export const getAdminCreateSongCreditMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminCreateSongCredit>>,
+    TError,
+    { songId: string; data: BodyType<CreateSongCreditBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminCreateSongCredit>>,
+  TError,
+  { songId: string; data: BodyType<CreateSongCreditBody> },
+  TContext
+> => {
+  const mutationKey = ["adminCreateSongCredit"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminCreateSongCredit>>,
+    { songId: string; data: BodyType<CreateSongCreditBody> }
+  > = (props) => {
+    const { songId, data } = props ?? {};
+
+    return adminCreateSongCredit(songId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminCreateSongCreditMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminCreateSongCredit>>
+>;
+export type AdminCreateSongCreditMutationBody = BodyType<CreateSongCreditBody>;
+export type AdminCreateSongCreditMutationError = ErrorType<unknown>;
+
+export const useAdminCreateSongCredit = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminCreateSongCredit>>,
+    TError,
+    { songId: string; data: BodyType<CreateSongCreditBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminCreateSongCredit>>,
+  TError,
+  { songId: string; data: BodyType<CreateSongCreditBody> },
+  TContext
+> => {
+  return useMutation(getAdminCreateSongCreditMutationOptions(options));
+};
+
+export const getAdminReorderSongCreditsUrl = (songId: string) => {
+  return `/api/admin/songs/${songId}/credits/reorder`;
+};
+
+export const adminReorderSongCredits = async (
+  songId: string,
+  reorderSongCreditsBody: ReorderSongCreditsBody,
+  options?: RequestInit,
+): Promise<SongCredit[]> => {
+  return customFetch<SongCredit[]>(getAdminReorderSongCreditsUrl(songId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(reorderSongCreditsBody),
+  });
+};
+
+export const getAdminReorderSongCreditsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminReorderSongCredits>>,
+    TError,
+    { songId: string; data: BodyType<ReorderSongCreditsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminReorderSongCredits>>,
+  TError,
+  { songId: string; data: BodyType<ReorderSongCreditsBody> },
+  TContext
+> => {
+  const mutationKey = ["adminReorderSongCredits"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminReorderSongCredits>>,
+    { songId: string; data: BodyType<ReorderSongCreditsBody> }
+  > = (props) => {
+    const { songId, data } = props ?? {};
+
+    return adminReorderSongCredits(songId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminReorderSongCreditsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminReorderSongCredits>>
+>;
+export type AdminReorderSongCreditsMutationBody =
+  BodyType<ReorderSongCreditsBody>;
+export type AdminReorderSongCreditsMutationError = ErrorType<unknown>;
+
+export const useAdminReorderSongCredits = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminReorderSongCredits>>,
+    TError,
+    { songId: string; data: BodyType<ReorderSongCreditsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminReorderSongCredits>>,
+  TError,
+  { songId: string; data: BodyType<ReorderSongCreditsBody> },
+  TContext
+> => {
+  return useMutation(getAdminReorderSongCreditsMutationOptions(options));
+};
+
+export const getAdminUpdateSongCreditUrl = (creditId: string) => {
+  return `/api/admin/credits/${creditId}`;
+};
+
+export const adminUpdateSongCredit = async (
+  creditId: string,
+  updateSongCreditBody: UpdateSongCreditBody,
+  options?: RequestInit,
+): Promise<SongCredit> => {
+  return customFetch<SongCredit>(getAdminUpdateSongCreditUrl(creditId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateSongCreditBody),
+  });
+};
+
+export const getAdminUpdateSongCreditMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminUpdateSongCredit>>,
+    TError,
+    { creditId: string; data: BodyType<UpdateSongCreditBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminUpdateSongCredit>>,
+  TError,
+  { creditId: string; data: BodyType<UpdateSongCreditBody> },
+  TContext
+> => {
+  const mutationKey = ["adminUpdateSongCredit"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminUpdateSongCredit>>,
+    { creditId: string; data: BodyType<UpdateSongCreditBody> }
+  > = (props) => {
+    const { creditId, data } = props ?? {};
+
+    return adminUpdateSongCredit(creditId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminUpdateSongCreditMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminUpdateSongCredit>>
+>;
+export type AdminUpdateSongCreditMutationBody = BodyType<UpdateSongCreditBody>;
+export type AdminUpdateSongCreditMutationError = ErrorType<unknown>;
+
+export const useAdminUpdateSongCredit = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminUpdateSongCredit>>,
+    TError,
+    { creditId: string; data: BodyType<UpdateSongCreditBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminUpdateSongCredit>>,
+  TError,
+  { creditId: string; data: BodyType<UpdateSongCreditBody> },
+  TContext
+> => {
+  return useMutation(getAdminUpdateSongCreditMutationOptions(options));
+};
+
+export const getAdminDeleteSongCreditUrl = (creditId: string) => {
+  return `/api/admin/credits/${creditId}`;
+};
+
+export const adminDeleteSongCredit = async (
+  creditId: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getAdminDeleteSongCreditUrl(creditId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getAdminDeleteSongCreditMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminDeleteSongCredit>>,
+    TError,
+    { creditId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminDeleteSongCredit>>,
+  TError,
+  { creditId: string },
+  TContext
+> => {
+  const mutationKey = ["adminDeleteSongCredit"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminDeleteSongCredit>>,
+    { creditId: string }
+  > = (props) => {
+    const { creditId } = props ?? {};
+
+    return adminDeleteSongCredit(creditId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminDeleteSongCreditMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminDeleteSongCredit>>
+>;
+
+export type AdminDeleteSongCreditMutationError = ErrorType<unknown>;
+
+export const useAdminDeleteSongCredit = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminDeleteSongCredit>>,
+    TError,
+    { creditId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminDeleteSongCredit>>,
+  TError,
+  { creditId: string },
+  TContext
+> => {
+  return useMutation(getAdminDeleteSongCreditMutationOptions(options));
 };
 
 /**
