@@ -12,6 +12,7 @@ import {
 } from "@workspace/db";
 import { and, asc, eq, desc, inArray, sql } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
+import { validateMergeBehavior } from "../lib/merge-validation";
 import { fetchCommitRows, fetchCommitById, fetchMergedVersionForCommit } from "../lib/commitQueries";
 import {
   toSong,
@@ -314,7 +315,9 @@ router.post("/versions", async (req: Request, res: Response) => {
   if (!b) return;
   const actor = (req as Request & { profile: { id: string } }).profile;
 
-  const result = await db.transaction(async (tx) => {
+  let result;
+  try {
+    result = await db.transaction(async (tx) => {
     const [{ maxNum }] = await tx
       .select({ maxNum: sql<number>`coalesce(max(${versionsTable.versionNumber}), 0)::int` })
       .from(versionsTable)
@@ -354,6 +357,24 @@ router.post("/versions", async (req: Request, res: Response) => {
         );
       }
 
+      // Enforce per-round mergeBehavior (see validateMergeBehavior).
+      const roundIds = Array.from(new Set(mergedCommits.map((c) => c.roundId)));
+      const roundsForMerge = await tx
+        .select()
+        .from(roundsTable)
+        .where(inArray(roundsTable.id, roundIds));
+      const validationError = validateMergeBehavior(
+        mergedCommits.map((c) => ({ id: c.id, roundId: c.roundId })),
+        roundsForMerge.map((r) => ({
+          id: r.id,
+          title: r.title,
+          mergeBehavior: r.mergeBehavior as "single" | "multi",
+        })),
+      );
+      if (validationError) {
+        throw new Error(validationError);
+      }
+
       for (const c of mergedCommits) {
         await tx.insert(versionMergesTable).values({
           versionId: version!.id,
@@ -389,7 +410,12 @@ router.post("/versions", async (req: Request, res: Response) => {
     });
 
     return version!;
-  });
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to publish version";
+    res.status(400).json({ error: message });
+    return;
+  }
 
   // Return full VersionWithMerges
   const all = await versionsWithMergesForSong(b.songId);
