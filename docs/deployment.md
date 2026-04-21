@@ -14,10 +14,12 @@ The production topology is **two Vercel projects** sharing the same Git repo:
 …backed by **one Supabase project** providing Postgres and a **Google Cloud
 Storage** bucket (with a service account) providing object storage.
 
-The web project uses a Vercel **rewrite** (configured in the Vercel dashboard,
-see step 4) to forward `/api/*` to the API project, so the browser sees a
-single origin. This avoids CORS work and keeps Clerk session cookies on one
-host.
+The web project uses a Vercel **rewrite** to forward `/api/*` to the API
+project, so the browser sees a single origin. This avoids CORS work and
+keeps Clerk session cookies on one host. The rewrite is generated at build
+time from the `API_REWRITE_TARGET` env var (see step 4.7), so operators set
+one env var per environment instead of editing committed config and preview
+deployments automatically point at the matching API preview deployment.
 
 ---
 
@@ -114,14 +116,27 @@ the schema. To force a destructive push (only on a database you own), use
    - `NODE_ENV=production`
    - `VITE_CLERK_PUBLISHABLE_KEY` (same Clerk publishable key as the API
      project)
-7. **Add the API rewrite via the Vercel dashboard** (do this *before* the
-   first deploy, or redeploy afterwards):
-   - **Project Settings → Rewrites → Add Rewrite**
-   - **Source**: `/api/:path*`
-   - **Destination**: `https://<api-host>/api/:path*` — substitute the host
-     from step 3 (e.g. `https://layerstack-api.vercel.app`).
-   - This rewrite is intentionally **not** committed to `vercel.json`,
-     because the API host is a per-environment value chosen at deploy time.
+7. **Set `API_REWRITE_TARGET`** — the API origin the build-time script will
+   wire `/api/*` to. The build will fail loudly if this is missing, so set
+   it before the first deploy. Configure it **per environment** in
+   **Project Settings → Environment Variables**:
+
+   | Environment | Value                                                                                  |
+   | ----------- | -------------------------------------------------------------------------------------- |
+   | Production  | `https://layerstack-api.vercel.app` (or your custom API domain)                        |
+   | Preview     | `https://layerstack-api-git-${VERCEL_GIT_COMMIT_REF}-<team-slug>.vercel.app`           |
+
+   The build script (`scripts/build-vercel-output.mjs`) substitutes
+   `${VAR}` placeholders against the build environment, so the Preview
+   value above resolves to the matching API preview branch deployment for
+   every PR — no manual edits per branch. Find your `<team-slug>` in the
+   API project's preview deployment URL (Vercel uses the pattern
+   `<project>-git-<branch>-<team>.vercel.app`).
+
+   The script writes `.vercel/output/config.json` via the Vercel Build
+   Output API, so the rewrite ships with the deployment artifact itself.
+   This is why `vercel.json` no longer needs to declare any rewrites and
+   no dashboard rewrite needs to be configured.
 8. **Deploy**.
 9. Go back to the API project and set `ALLOWED_ORIGINS` to include the web
    project's URL (e.g. `https://layerstack-web.vercel.app`). Redeploy the
@@ -313,8 +328,20 @@ After step 8.2 your team should bookmark:
 - **Clerk redirects fail.** Make sure the web URL is listed in Clerk's
   allowed domains and that `VITE_CLERK_PUBLISHABLE_KEY` matches the same
   Clerk instance whose `CLERK_SECRET_KEY` you set on the API project.
-- **404 on `/api/*` from the web project.** The dashboard rewrite from
-  step 4.7 hasn't been added yet, or its destination host is wrong.
+- **404 on `/api/*` from the web project.** `API_REWRITE_TARGET` is unset
+  or points at the wrong host for this environment. Check the web
+  project's build logs — `scripts/build-vercel-output.mjs` prints the
+  resolved API origin on every deploy. Update the env var on the affected
+  environment and redeploy.
+- **Build fails with `API_REWRITE_TARGET is not set`.** Add the env var
+  to the failing environment (Production or Preview) per step 4.7, then
+  redeploy.
+- **Build fails with `references ${VAR} but that environment variable is
+  not set`.** You used `${VERCEL_GIT_COMMIT_REF}` (or similar) in the
+  Preview value, but the deploy is running in an environment where that
+  variable isn't populated. For Vercel previews, `VERCEL_GIT_COMMIT_REF`
+  is provided automatically — make sure the env var is scoped to the
+  Preview environment only.
 
 ## Local Replit development
 
