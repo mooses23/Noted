@@ -120,7 +120,7 @@ export default function CommitDetail() {
                 <span>{commit.hasVoted ? "Voted" : "Vote"}</span>
                 <span className="bg-background/20 px-2 py-0.5 ml-2 font-mono text-xs">{commit.voteCount}</span>
               </Button>
-              {isOwner && <div className="text-xs text-muted-foreground uppercase tracking-widest">Your own commit</div>}
+              {isOwner && <div className="text-xs text-muted-foreground uppercase tracking-widest">Your own Note</div>}
             </div>
           </div>
 
