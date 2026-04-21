@@ -16,6 +16,11 @@ import {
 import { and, asc, eq, desc, inArray, sql } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 import { validateMergeBehavior } from "../lib/merge-validation";
+import {
+  notifyCommitStatusChanged,
+  notifyCommitsMerged,
+} from "../lib/notifications";
+import { logger } from "../lib/logger";
 import { fetchCommitRows, fetchCommitById, fetchMergedVersionForCommit } from "../lib/commitQueries";
 import {
   toSong,
@@ -301,7 +306,7 @@ router.patch("/commits/:commitId/status", async (req: Request, res: Response) =>
     res.status(404).json({ error: "Not found" });
     return;
   }
-  const actor = (req as Request & { profile: { id: string } }).profile;
+  const actor = (req as Request & { profile: { id: string; displayName: string } }).profile;
   await db.insert(adminActionsTable).values({
     actorId: actor.id,
     action: `set_commit_status:${status}`,
@@ -311,6 +316,27 @@ router.patch("/commits/:commitId/status", async (req: Request, res: Response) =>
   if (!row) {
     res.status(500).json({ error: "Failed to reload" });
     return;
+  }
+  // Fan out a notification when the admin shortlists/rejects/un-flags a Note.
+  // "merged" status changes happen through the publish-version flow, which
+  // sends a richer notification — skip here to avoid double-notifying.
+  if (status === "shortlisted" || status === "rejected" || status === "pending") {
+    notifyCommitStatusChanged({
+      commitId: row.commit.id,
+      contributorId: row.commit.contributorId,
+      commitTitle: row.commit.title,
+      songSlug: row.song.slug,
+      songTitle: row.song.title,
+      songId: row.song.id,
+      status,
+      actorId: actor.id,
+      actorDisplayName: actor.displayName,
+    }).catch((err) => {
+      logger.warn(
+        { err, commitId: row.commit.id, status },
+        "notifyCommitStatusChanged failed",
+      );
+    });
   }
   const mergedVersion = await fetchMergedVersionForCommit(row.commit.id);
   res.json({
@@ -434,7 +460,18 @@ router.post("/versions/preview-mix", async (req: Request, res: Response) => {
 router.post("/versions", async (req: Request, res: Response) => {
   const b = parseBody(AdminCreateVersionBody, req.body, res);
   if (!b) return;
-  const actor = (req as Request & { profile: { id: string } }).profile;
+  const actor = (req as Request & { profile: { id: string; displayName: string } }).profile;
+  let mergedCommitsForNotify: Array<{
+    commitId: string;
+    contributorId: string;
+    commitTitle: string;
+  }> = [];
+  type NotifyVersion = { id: string; versionNumber: number; title: string };
+  type NotifySong = { id: string; slug: string; title: string };
+  const notifyState: {
+    version: NotifyVersion | null;
+    song: NotifySong | null;
+  } = { version: null, song: null };
 
   let result;
   try {
@@ -513,7 +550,28 @@ router.post("/versions", async (req: Request, res: Response) => {
           .set({ status: "merged", updatedAt: new Date() })
           .where(eq(roundsTable.id, c.roundId));
       }
+      mergedCommitsForNotify = mergedCommits.map((c) => ({
+        commitId: c.id,
+        contributorId: c.contributorId,
+        commitTitle: c.title,
+      }));
     }
+
+    const [songRow] = await tx
+      .select({
+        id: songsTable.id,
+        slug: songsTable.slug,
+        title: songsTable.title,
+      })
+      .from(songsTable)
+      .where(eq(songsTable.id, b.songId))
+      .limit(1);
+    if (songRow) notifyState.song = songRow;
+    notifyState.version = {
+      id: version!.id,
+      versionNumber: version!.versionNumber,
+      title: version!.title,
+    };
 
     await tx
       .update(songsTable)
@@ -573,6 +631,28 @@ router.post("/versions", async (req: Request, res: Response) => {
       { err: cleanupErr, songId: b.songId },
       "auto-mix preview cleanup after publish failed",
     );
+  }
+
+  // Notify each merged commit's contributor that their Note shipped.
+  const _song = notifyState.song;
+  const _version = notifyState.version;
+  if (_song && _version && mergedCommitsForNotify.length > 0) {
+    notifyCommitsMerged({
+      songId: _song.id,
+      songSlug: _song.slug,
+      songTitle: _song.title,
+      versionId: _version.id,
+      versionNumber: _version.versionNumber,
+      versionTitle: _version.title,
+      actorId: actor.id,
+      actorDisplayName: actor.displayName,
+      commits: mergedCommitsForNotify,
+    }).catch((err) => {
+      logger.warn(
+        { err, songId: _song.id, versionId: _version.id },
+        "notifyCommitsMerged failed",
+      );
+    });
   }
 
   // Return full VersionWithMerges

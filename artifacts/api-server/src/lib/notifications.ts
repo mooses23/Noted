@@ -66,3 +66,83 @@ export async function notifyNewComment(args: {
   return rows.length;
 }
 
+const STATUS_COPY: Record<
+  "shortlisted" | "rejected" | "pending",
+  { verb: string; type: string }
+> = {
+  shortlisted: { verb: "shortlisted", type: "commit_shortlisted" },
+  rejected: { verb: "passed on", type: "commit_rejected" },
+  pending: { verb: "moved back to pending on", type: "commit_unflagged" },
+};
+
+/**
+ * Notify a commit's contributor that an admin moved their Note into a new
+ * status (shortlisted / rejected / pending). The "merged" status is handled
+ * separately by notifyCommitsMerged because it fans out as part of the
+ * publish-version flow.
+ */
+export async function notifyCommitStatusChanged(args: {
+  commitId: string;
+  contributorId: string;
+  commitTitle: string;
+  songSlug: string;
+  songTitle: string;
+  status: "shortlisted" | "rejected" | "pending";
+  actorId: string;
+  actorDisplayName: string;
+  songId?: string | null;
+}): Promise<number> {
+  if (args.contributorId === args.actorId) return 0;
+  const copy = STATUS_COPY[args.status];
+  await db.insert(notificationsTable).values({
+    userId: args.contributorId,
+    type: copy.type,
+    title: `${args.actorDisplayName} ${copy.verb} your Note “${args.commitTitle}”`,
+    body: `On “${args.songTitle}”.`,
+    linkPath: `/commits/${args.commitId}`,
+    actorId: args.actorId,
+    songId: args.songId ?? null,
+    commentId: null,
+  } satisfies InsertNotification);
+  return 1;
+}
+
+/**
+ * Notify each merged commit's contributor that their Note is now part of a
+ * published version. One notification per commit. Skips notifications where
+ * the contributor is also the actor (e.g. an admin merging their own Note).
+ */
+export async function notifyCommitsMerged(args: {
+  songId: string;
+  songSlug: string;
+  songTitle: string;
+  versionId: string;
+  versionNumber: number;
+  versionTitle: string;
+  actorId: string;
+  actorDisplayName: string;
+  commits: Array<{
+    commitId: string;
+    contributorId: string;
+    commitTitle: string;
+  }>;
+}): Promise<number> {
+  const rows: InsertNotification[] = [];
+  for (const c of args.commits) {
+    if (c.contributorId === args.actorId) continue;
+    rows.push({
+      userId: c.contributorId,
+      type: "commit_merged",
+      title: `Your Note “${c.commitTitle}” was merged into v${args.versionNumber}`,
+      body: `“${args.versionTitle}” on ${args.songTitle}.`,
+      linkPath: `/songs/${args.songSlug}/versions`,
+      actorId: args.actorId,
+      songId: args.songId,
+      commentId: null,
+    });
+  }
+  if (rows.length === 0) return 0;
+  await db.insert(notificationsTable).values(rows);
+  return rows.length;
+}
+
