@@ -468,6 +468,12 @@ router.post("/songs/:songId/credits/reorder", async (req: Request, res: Response
   }
 
   const result = await db.transaction(async (tx) => {
+    const [song] = await tx
+      .select({ id: songsTable.id })
+      .from(songsTable)
+      .where(eq(songsTable.id, songId))
+      .for("update");
+    if (!song) return { error: "song_missing" as const };
     // Lock the song's credit rows for the duration of this transaction so
     // that concurrent create/delete cannot race with us.
     const existing = await tx
@@ -507,9 +513,13 @@ router.post("/songs/:songId/credits/reorder", async (req: Request, res: Response
   });
 
   if ("error" in result) {
-    res
-      .status(400)
-      .json({ error: "creditIds must include exactly all credits for this song" });
+    if (result.error === "song_missing") {
+      res.status(404).json({ error: "Song not found" });
+    } else {
+      res
+        .status(400)
+        .json({ error: "creditIds must include exactly all credits for this song" });
+    }
     return;
   }
   res.json(result.rows.map(toSongCredit));
