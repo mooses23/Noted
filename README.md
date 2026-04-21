@@ -33,7 +33,7 @@ libraries that connect them, the seed/demo content, and a UI mockup sandbox.
   "what was the song when I recorded?" question has a deterministic answer).
 - **Commits.** Contributors submit a stem with a title, note, and the
   required human-made / rights-grant attestations. Statuses: pending,
-  rejected, merged.
+  shortlisted, rejected, merged.
 - **Three-player A/B/C commit cards.** Every commit card on the feed, home,
   song, and admin pages shows three independent audio players: the
   contributor's solo stem, the same stem layered over the round's base
@@ -129,7 +129,8 @@ All routes are mounted under `/api` (see
 - `rounds` — round listing and detail
 - `commits` — commit listing, detail, and submission
 - `votes` — upvote / clear-vote on commits
-- `versions` — song version detail
+- `versions` — song-scoped version listing (the ordered set of releases
+  for a given song)
 - `credits` — public per-song credits + the global `/credits` listing
 - `stats` — site-wide stats used on the home page
 - `admin/*` — admin-only mutations (songs, versions, commits review,
