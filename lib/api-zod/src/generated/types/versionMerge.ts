@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ContributorLite } from "./contributorLite";
+import type { VersionMergeCommitKind } from "./versionMergeCommitKind";
 
 export interface VersionMerge {
   id: string;
@@ -15,6 +16,7 @@ export interface VersionMerge {
   mergeNote?: string | null;
   commitTitle: string;
   instrumentType: string;
+  commitKind: VersionMergeCommitKind;
   contributor: ContributorLite;
   createdAt: Date;
 }

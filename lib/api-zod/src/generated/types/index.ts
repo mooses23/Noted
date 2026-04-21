@@ -76,5 +76,6 @@ export * from "./updateSongBodyStatus";
 export * from "./updateSongCreditBody";
 export * from "./version";
 export * from "./versionMerge";
+export * from "./versionMergeCommitKind";
 export * from "./versionWithMerges";
 export * from "./voteResult";

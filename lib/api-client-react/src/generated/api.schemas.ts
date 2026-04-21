@@ -227,6 +227,14 @@ export type CommitDetail = CommitSummary & {
   mergedIntoVersion?: Version | null;
 };
 
+export type VersionMergeCommitKind =
+  (typeof VersionMergeCommitKind)[keyof typeof VersionMergeCommitKind];
+
+export const VersionMergeCommitKind = {
+  structure: "structure",
+  accent: "accent",
+} as const;
+
 export interface VersionMerge {
   id: string;
   versionId: string;
@@ -235,6 +243,7 @@ export interface VersionMerge {
   mergeNote?: string | null;
   commitTitle: string;
   instrumentType: string;
+  commitKind: VersionMergeCommitKind;
   contributor: ContributorLite;
   createdAt: string;
 }

@@ -424,6 +424,7 @@ export const ListVersionsForSongResponseItem = zod
           mergeNote: zod.string().nullish(),
           commitTitle: zod.string(),
           instrumentType: zod.string(),
+          commitKind: zod.enum(["structure", "accent"]),
           contributor: zod.object({
             id: zod.string().uuid(),
             displayName: zod.string(),
@@ -1327,6 +1328,7 @@ export const AdminCreateVersionResponse = zod
           mergeNote: zod.string().nullish(),
           commitTitle: zod.string(),
           instrumentType: zod.string(),
+          commitKind: zod.enum(["structure", "accent"]),
           contributor: zod.object({
             id: zod.string().uuid(),
             displayName: zod.string(),

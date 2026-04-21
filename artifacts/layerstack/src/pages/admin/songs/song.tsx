@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "wouter";
 import {
   useGetSong,
@@ -111,6 +111,11 @@ export default function AdminSongDetail() {
     },
   });
 
+  const [kindFilter, setKindFilter] = useState<"all" | "structure" | "accent">("all");
+  const filteredPending = (pendingCommits ?? []).filter((c) =>
+    kindFilter === "all" ? true : c.kind === kindFilter,
+  );
+
   const invalidateCommits = () => {
     queryClient.invalidateQueries({
       queryKey: getAdminListCommitsQueryKey(pendingParams),
@@ -171,7 +176,7 @@ export default function AdminSongDetail() {
             value="commits"
             className="rounded-none h-full data-[state=active]:bg-primary data-[state=active]:text-primary-foreground uppercase tracking-widest text-xs px-6"
           >
-            Review ({pendingCommits?.length || 0})
+            Review ({filteredPending.length}{kindFilter !== "all" ? `/${pendingCommits?.length || 0}` : ""})
           </TabsTrigger>
           <TabsTrigger
             value="publish"
@@ -207,12 +212,30 @@ export default function AdminSongDetail() {
 
         <TabsContent value="commits" className="mt-6 border-none p-0 outline-none">
           <div className="bg-card border border-border p-8">
-            <h2 className="text-2xl font-serif font-bold mb-6">
-              Pending Commits to Review
-            </h2>
-            {pendingCommits?.length ? (
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+              <h2 className="text-2xl font-serif font-bold">
+                Pending Commits to Review
+              </h2>
+              <div className="flex items-center gap-2 text-xs uppercase tracking-widest">
+                <span className="text-muted-foreground">Filter:</span>
+                {(["all", "structure", "accent"] as const).map((k) => (
+                  <button
+                    key={k}
+                    onClick={() => setKindFilter(k)}
+                    className={`px-3 py-1 border ${
+                      kindFilter === k
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "border-border text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {k}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {filteredPending.length ? (
               <div className="space-y-6">
-                {pendingCommits.map((commit) => (
+                {filteredPending.map((commit) => (
                   <CommitReviewCard
                     key={commit.id}
                     commit={commit}
@@ -236,7 +259,7 @@ export default function AdminSongDetail() {
         </TabsContent>
 
         <TabsContent value="rounds" className="mt-6 border-none p-0 outline-none">
-          <RoundsPanel songId={songId} rounds={rounds ?? []} />
+          <RoundsPanel songId={songId} rounds={rounds ?? []} songPhase={song.phase} />
         </TabsContent>
 
         <TabsContent value="files" className="mt-6 border-none p-0 outline-none">
@@ -507,18 +530,35 @@ function PublishVersionPanel({
   );
 }
 
-function RoundsPanel({ songId, rounds }: { songId: string; rounds: Round[] }) {
+function RoundsPanel({
+  songId,
+  rounds,
+  songPhase,
+}: {
+  songId: string;
+  rounds: Round[];
+  songPhase?: string;
+}) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [instrument, setInstrument] = useState(INSTRUMENT_OPTIONS[0]);
-  const [kind, setKind] = useState<CreateRoundBodyKind>(
-    CreateRoundBodyKind.structure,
-  );
+  const defaultKind: CreateRoundBodyKind =
+    songPhase === "accents"
+      ? CreateRoundBodyKind.accent
+      : CreateRoundBodyKind.structure;
+  const defaultMerge: CreateRoundBodyMergeBehavior =
+    songPhase === "accents"
+      ? CreateRoundBodyMergeBehavior.multi
+      : CreateRoundBodyMergeBehavior.single;
+  const [kind, setKind] = useState<CreateRoundBodyKind>(defaultKind);
   const [mergeBehavior, setMergeBehavior] =
-    useState<CreateRoundBodyMergeBehavior>(
-      CreateRoundBodyMergeBehavior.single,
-    );
+    useState<CreateRoundBodyMergeBehavior>(defaultMerge);
+  // If the song's phase changes (after Advance/Revert) auto-realign defaults.
+  useEffect(() => {
+    setKind(defaultKind);
+    setMergeBehavior(defaultMerge);
+  }, [songPhase]); // eslint-disable-line react-hooks/exhaustive-deps
   const create = useAdminCreateRound();
   const update = useAdminUpdateRound();
 
