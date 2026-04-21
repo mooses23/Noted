@@ -119,6 +119,7 @@ export const toProfile = (p: Profile) => ({
   bio: p.bio ?? null,
   socialHandle: p.socialHandle ?? null,
   isAdmin: p.isAdmin,
+  unreadDigestOptOut: p.unreadDigestOptOut,
   createdAt: p.createdAt.toISOString(),
 });
 

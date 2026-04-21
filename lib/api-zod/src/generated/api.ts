@@ -28,9 +28,29 @@ export const GetCurrentUserResponse = zod.object({
       bio: zod.string().nullish(),
       socialHandle: zod.string().nullish(),
       isAdmin: zod.boolean(),
+      unreadDigestOptOut: zod.boolean(),
       createdAt: zod.coerce.date(),
     })
     .nullish(),
+});
+
+/**
+ * @summary Update the current user's preferences (e.g. email digest opt-out)
+ */
+export const UpdateMeBody = zod.object({
+  unreadDigestOptOut: zod.boolean().optional(),
+});
+
+export const UpdateMeResponse = zod.object({
+  id: zod.string().uuid(),
+  displayName: zod.string(),
+  username: zod.string().nullish(),
+  avatarUrl: zod.string().nullish(),
+  bio: zod.string().nullish(),
+  socialHandle: zod.string().nullish(),
+  isAdmin: zod.boolean(),
+  unreadDigestOptOut: zod.boolean(),
+  createdAt: zod.coerce.date(),
 });
 
 /**

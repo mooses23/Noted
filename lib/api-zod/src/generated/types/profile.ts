@@ -14,5 +14,6 @@ export interface Profile {
   bio?: string | null;
   socialHandle?: string | null;
   isAdmin: boolean;
+  unreadDigestOptOut: boolean;
   createdAt: Date;
 }

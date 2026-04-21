@@ -17,12 +17,17 @@ export interface Profile {
   bio?: string | null;
   socialHandle?: string | null;
   isAdmin: boolean;
+  unreadDigestOptOut: boolean;
   createdAt: string;
 }
 
 export interface CurrentUser {
   authenticated: boolean;
   profile?: Profile | null;
+}
+
+export interface UpdateMeBody {
+  unreadDigestOptOut?: boolean;
 }
 
 export type SongStatus = (typeof SongStatus)[keyof typeof SongStatus];

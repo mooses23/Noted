@@ -65,6 +65,9 @@ export const profilesTable = pgTable("profiles", {
   avatarUrl: text("avatar_url"),
   bio: text("bio"),
   socialHandle: text("social_handle"),
+  email: text("email"),
+  unreadDigestOptOut: boolean("unread_digest_opt_out").notNull().default(false),
+  lastDigestEmailedAt: timestamp("last_digest_emailed_at", { withTimezone: true }),
   isAdmin: boolean("is_admin").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

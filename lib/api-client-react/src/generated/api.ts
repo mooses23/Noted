@@ -45,6 +45,7 @@ import type {
   LogDownloadBody,
   NotificationFeed,
   PostCommentBody,
+  Profile,
   PublicStats,
   ReorderSongCreditsBody,
   ReportComment201,
@@ -61,6 +62,7 @@ import type {
   SubmitCommitBody,
   SubmitDraftBody,
   UpdateDraftBody,
+  UpdateMeBody,
   UpdateRoundBody,
   UpdateSongBody,
   UpdateSongCreditBody,
@@ -226,6 +228,92 @@ export function useGetCurrentUser<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Update the current user's preferences (e.g. email digest opt-out)
+ */
+export const getUpdateMeUrl = () => {
+  return `/api/me`;
+};
+
+export const updateMe = async (
+  updateMeBody: UpdateMeBody,
+  options?: RequestInit,
+): Promise<Profile> => {
+  return customFetch<Profile>(getUpdateMeUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateMeBody),
+  });
+};
+
+export const getUpdateMeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMe>>,
+    TError,
+    { data: BodyType<UpdateMeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateMe>>,
+  TError,
+  { data: BodyType<UpdateMeBody> },
+  TContext
+> => {
+  const mutationKey = ["updateMe"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateMe>>,
+    { data: BodyType<UpdateMeBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateMe(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateMeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateMe>>
+>;
+export type UpdateMeMutationBody = BodyType<UpdateMeBody>;
+export type UpdateMeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update the current user's preferences (e.g. email digest opt-out)
+ */
+export const useUpdateMe = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMe>>,
+    TError,
+    { data: BodyType<UpdateMeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateMe>>,
+  TError,
+  { data: BodyType<UpdateMeBody> },
+  TContext
+> => {
+  return useMutation(getUpdateMeMutationOptions(options));
+};
 
 /**
  * @summary Recent notifications for the current user (auth required)

@@ -80,6 +80,7 @@ export * from "./submitCommitBody";
 export * from "./submitDraftBody";
 export * from "./topContributor";
 export * from "./updateDraftBody";
+export * from "./updateMeBody";
 export * from "./updateRoundBody";
 export * from "./updateRoundBodyKind";
 export * from "./updateRoundBodyMergeBehavior";
