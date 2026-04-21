@@ -164,6 +164,7 @@ export interface CommitSummary {
   instrumentType: string;
   audioFileUrl: string;
   previewMixUrl?: string | null;
+  baseAudioUrl?: string | null;
   status: CommitSummaryStatus;
   voteCount: number;
   hasVoted?: boolean;

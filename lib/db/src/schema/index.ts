@@ -114,6 +114,7 @@ export const roundsTable = pgTable(
     description: text("description"),
     allowedInstrumentType: text("allowed_instrument_type").notNull(),
     status: roundStatusEnum("status").notNull().default("draft"),
+    baseVersionId: uuid("base_version_id"),
     opensAt: timestamp("opens_at", { withTimezone: true }),
     closesAt: timestamp("closes_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })

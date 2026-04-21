@@ -48,7 +48,7 @@ import { Plus, ArrowLeft, Check, X, Upload, FileAudio, Save, Trash2, ArrowUp, Ar
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { AudioPlayer } from "@/components/AudioPlayer";
+import { CommitAudioComparator } from "@/components/CommitAudioComparator";
 
 const INSTRUMENT_OPTIONS = [
   "drums",
@@ -316,11 +316,7 @@ function CommitReviewCard({
         </div>
       )}
 
-      <AudioPlayer
-        url={commit.audioFileUrl}
-        title={commit.title}
-        className="bg-card border-border"
-      />
+      <CommitAudioComparator commit={commit} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { ArrowRight, Disc3, Users, PlayCircle, GitBranch, ShieldCheck } from "lucide-react";
 import { useGetFeaturedSong, useListRisingCommits, useGetPublicStats } from "@workspace/api-client-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
+import { CommitAudioComparator } from "@/components/CommitAudioComparator";
 import { Button } from "@/components/ui/button";
 import { CoverImage } from "@/components/CoverImage";
 
@@ -132,11 +133,7 @@ export default function Home() {
                   <div className="text-xs text-muted-foreground mb-4 uppercase tracking-wider">
                     For <Link href={`/songs/${commit.songSlug}`} className="hover:text-foreground underline decoration-border">{commit.songTitle}</Link>
                   </div>
-                  <AudioPlayer 
-                    url={commit.audioFileUrl} 
-                    title="Preview" 
-                    className="bg-background border-border p-2"
-                  />
+                  <CommitAudioComparator commit={commit} />
                 </div>
               ))}
             </div>

@@ -794,6 +794,9 @@ components:
         previewMixUrl:
           type: string
           nullable: true
+        baseAudioUrl:
+          type: string
+          nullable: true
         status: { type: string, enum: [pending, shortlisted, merged, rejected] }
         voteCount: { type: integer }
         hasVoted: { type: boolean }
