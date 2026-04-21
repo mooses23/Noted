@@ -11,7 +11,12 @@ import {
   useGetCurrentUser,
   useListCredits,
   getListCreditsQueryKey,
+  useListSongComments,
+  usePostSongComment,
+  useDeleteComment,
+  getListSongCommentsQueryKey,
   type CommitSummary,
+  type Comment,
 } from "@workspace/api-client-react";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { WaveformStack, type WaveformLayer } from "@/components/WaveformStack";
@@ -180,16 +185,7 @@ export default function SongDetail() {
             </section>
           )}
 
-          {/* Comments — placeholder for now (no API yet) */}
-          <section>
-            <h2 className="text-2xl font-serif font-bold mb-4 flex items-center gap-2">
-              <MessageSquare className="w-5 h-5" /> Comments
-            </h2>
-            <div className="bg-card border border-dashed border-border p-6 text-sm text-muted-foreground">
-              Comments are coming soon. For now, leave your feedback inside your
-              Note's curator note when you submit.
-            </div>
-          </section>
+          <CommentsSection songId={song.id} />
 
           <section>
             <div className="flex items-center justify-between p-5 bg-card border border-border">
@@ -658,5 +654,158 @@ function NoteRow({
         </div>
       )}
     </div>
+  );
+}
+
+function CommentsSection({ songId }: { songId: string }) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { data: user } = useGetCurrentUser();
+  const [body, setBody] = useState("");
+
+  const commentsQueryKey = getListSongCommentsQueryKey(songId);
+  const { data: comments, isLoading } = useListSongComments(songId, {
+    query: { queryKey: commentsQueryKey },
+  });
+
+  const postMutation = usePostSongComment();
+  const deleteMutation = useDeleteComment();
+
+  const isAdmin = !!user?.profile?.isAdmin;
+  const myId = user?.profile?.id ?? null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = body.trim();
+    if (!trimmed) return;
+    postMutation.mutate(
+      { songId, data: { body: trimmed } },
+      {
+        onSuccess: () => {
+          setBody("");
+          queryClient.invalidateQueries({ queryKey: commentsQueryKey });
+        },
+        onError: (err) => {
+          toast({
+            title: "Couldn't post comment",
+            description: err.message,
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
+
+  const handleDelete = (commentId: string) => {
+    if (!confirm("Delete this comment?")) return;
+    deleteMutation.mutate(
+      { commentId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: commentsQueryKey });
+        },
+        onError: (err) => {
+          toast({
+            title: "Couldn't delete comment",
+            description: err.message,
+            variant: "destructive",
+          });
+        },
+      },
+    );
+  };
+
+  const list = comments ?? [];
+
+  return (
+    <section>
+      <h2 className="text-2xl font-serif font-bold mb-4 flex items-center gap-2">
+        <MessageSquare className="w-5 h-5" /> Comments
+        <span className="text-sm font-sans font-normal text-muted-foreground">
+          ({list.length})
+        </span>
+      </h2>
+
+      {user ? (
+        <form
+          onSubmit={handleSubmit}
+          className="bg-card border border-border p-4 mb-4"
+        >
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Share your take on this song…"
+            maxLength={2000}
+            rows={3}
+            className="w-full bg-background border border-border p-3 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-primary"
+            disabled={postMutation.isPending}
+          />
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              {body.length}/2000
+            </span>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={!body.trim() || postMutation.isPending}
+            >
+              {postMutation.isPending ? "Posting…" : "Post comment"}
+            </Button>
+          </div>
+        </form>
+      ) : (
+        <div className="bg-card border border-dashed border-border p-4 mb-4 text-sm text-muted-foreground">
+          <Link href="/sign-in" className="text-primary hover:underline">
+            Sign in
+          </Link>{" "}
+          to join the conversation.
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="bg-card border border-border p-6 text-sm text-muted-foreground">
+          Loading comments…
+        </div>
+      ) : list.length === 0 ? (
+        <div className="bg-card border border-dashed border-border p-6 text-sm text-muted-foreground">
+          No comments yet. Be the first to share what you hear.
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {list.map((c: Comment) => {
+            const canDelete = isAdmin || (myId !== null && c.authorId === myId);
+            return (
+              <li
+                key={c.id}
+                className="bg-card border border-border p-4"
+              >
+                <div className="flex items-baseline justify-between gap-3 mb-2">
+                  <div className="flex items-baseline gap-2 min-w-0">
+                    <span className="font-bold text-sm truncate">
+                      {c.author.displayName}
+                    </span>
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                      {format(new Date(c.createdAt), "MMM d, yyyy · h:mm a")}
+                    </span>
+                  </div>
+                  {canDelete && (
+                    <button
+                      onClick={() => handleDelete(c.id)}
+                      disabled={deleteMutation.isPending}
+                      className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive disabled:opacity-50"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+                <p className="text-sm whitespace-pre-wrap break-words">
+                  {c.body}
+                </p>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }

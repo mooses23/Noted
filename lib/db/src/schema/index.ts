@@ -255,6 +255,27 @@ export const versionMergesTable = pgTable(
   ],
 );
 
+export const commentsTable = pgTable(
+  "comments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    songId: uuid("song_id")
+      .notNull()
+      .references(() => songsTable.id, { onDelete: "cascade" }),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => profilesTable.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("comments_song_idx").on(t.songId),
+    index("comments_author_idx").on(t.authorId),
+  ],
+);
+
 export const songCreditsTable = pgTable(
   "song_credits",
   {
@@ -413,3 +434,5 @@ export type InsertVersion = typeof versionsTable.$inferInsert;
 export type VersionMerge = typeof versionMergesTable.$inferSelect;
 export type SongCredit = typeof songCreditsTable.$inferSelect;
 export type InsertSongCredit = typeof songCreditsTable.$inferInsert;
+export type Comment = typeof commentsTable.$inferSelect;
+export type InsertComment = typeof commentsTable.$inferInsert;

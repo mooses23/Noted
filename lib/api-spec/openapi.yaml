@@ -294,6 +294,53 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/CommitDetail" }
 
+  /songs/{songId}/comments:
+    get:
+      operationId: listSongComments
+      tags: [comments]
+      summary: List comments on a song, newest first
+      parameters:
+        - $ref: "#/components/parameters/SongId"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Comment" }
+    post:
+      operationId: postSongComment
+      tags: [comments]
+      summary: Post a comment on a song (auth required)
+      parameters:
+        - $ref: "#/components/parameters/SongId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PostCommentBody" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Comment" }
+
+  /comments/{commentId}:
+    delete:
+      operationId: deleteComment
+      tags: [comments]
+      summary: Delete a comment (author or admin)
+      parameters:
+        - name: commentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Deleted
+
   /storage/uploads/request-url:
     post:
       operationId: requestUploadUrl
@@ -1091,6 +1138,23 @@ components:
         socialHandle: { type: string }
         confirmedHumanMade: { type: boolean }
         confirmedRightsGrant: { type: boolean }
+
+    Comment:
+      type: object
+      required: [id, songId, authorId, body, createdAt, author]
+      properties:
+        id: { type: string, format: uuid }
+        songId: { type: string, format: uuid }
+        authorId: { type: string, format: uuid }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+        author: { $ref: "#/components/schemas/ContributorLite" }
+
+    PostCommentBody:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 2000 }
 
     AdminAddSongFileBody:
       type: object
