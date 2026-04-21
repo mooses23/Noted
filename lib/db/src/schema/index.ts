@@ -378,6 +378,37 @@ export const commentReportsTable = pgTable(
   ],
 );
 
+export const notificationsTable = pgTable(
+  "notifications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => profilesTable.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    title: text("title").notNull(),
+    body: text("body"),
+    linkPath: text("link_path").notNull(),
+    actorId: uuid("actor_id").references(() => profilesTable.id, {
+      onDelete: "set null",
+    }),
+    songId: uuid("song_id").references(() => songsTable.id, {
+      onDelete: "cascade",
+    }),
+    commentId: uuid("comment_id").references(() => commentsTable.id, {
+      onDelete: "cascade",
+    }),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("notifications_user_idx").on(t.userId),
+    index("notifications_user_unread_idx").on(t.userId, t.readAt),
+  ],
+);
+
 export const adminActionsTable = pgTable("admin_actions", {
   id: uuid("id").defaultRandom().primaryKey(),
   actorId: uuid("actor_id").references(() => profilesTable.id, {
@@ -498,3 +529,5 @@ export type CommitDraft = typeof commitDraftsTable.$inferSelect;
 export type InsertCommitDraft = typeof commitDraftsTable.$inferInsert;
 export type CommentReport = typeof commentReportsTable.$inferSelect;
 export type InsertCommentReport = typeof commentReportsTable.$inferInsert;
+export type Notification = typeof notificationsTable.$inferSelect;
+export type InsertNotification = typeof notificationsTable.$inferInsert;

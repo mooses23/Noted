@@ -745,7 +745,7 @@ function CommentsSection({ songId }: { songId: string }) {
   const list = comments ?? [];
 
   return (
-    <section>
+    <section id="comments" className="scroll-mt-24">
       <h2 className="text-2xl font-serif font-bold mb-4 flex items-center gap-2">
         <MessageSquare className="w-5 h-5" /> Comments
         <span className="text-sm font-sans font-normal text-muted-foreground">

@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/reac
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useGetCurrentUser } from "@workspace/api-client-react";
+import { NotificationsBell } from "@/components/notifications-bell";
 
 import Home from "./pages/home";
 import Songs from "./pages/songs";
@@ -232,6 +233,7 @@ function Layout({ children }: { children: React.ReactNode }) {
                 Admin
               </Link>
             )}
+            <NotificationsBell />
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground hidden sm:inline">{user?.profile?.displayName}</span>
               <button onClick={() => clerk.signOut()} className="text-xs uppercase tracking-widest hover:text-muted-foreground transition-colors">
