@@ -32,6 +32,34 @@ import {
 } from "lucide-react";
 import { WaveformStack, type WaveformLayer } from "@/components/WaveformStack";
 
+function formatMmSsCs(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) seconds = 0;
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  const cs = Math.round((seconds - Math.floor(seconds)) * 100);
+  return `${m}:${s.toString().padStart(2, "0")}.${cs.toString().padStart(2, "0")}`;
+}
+
+function parseMmSsCs(input: string): number | null {
+  const trimmed = input.trim();
+  // Accept m:ss(.cs) or ss(.cs)
+  const m1 = /^(\d+):(\d{1,2})(?:\.(\d{1,2}))?$/.exec(trimmed);
+  if (m1) {
+    const m = parseInt(m1[1], 10);
+    const s = parseInt(m1[2], 10);
+    const cs = m1[3] ? parseInt(m1[3].padEnd(2, "0"), 10) : 0;
+    if (s >= 60) return null;
+    return m * 60 + s + cs / 100;
+  }
+  const m2 = /^(\d+)(?:\.(\d{1,2}))?$/.exec(trimmed);
+  if (m2) {
+    const s = parseInt(m2[1], 10);
+    const cs = m2[2] ? parseInt(m2[2].padEnd(2, "0"), 10) : 0;
+    return s + cs / 100;
+  }
+  return null;
+}
+
 const formSchema = z.object({
   title: z.string().min(1, "Title is required").max(120),
   note: z.string().max(500).optional(),
@@ -345,6 +373,24 @@ export default function SubmitCommit() {
               editableLayerIds={["overlay"]}
               onOffsetChange={(_id, v) => setOverlayOffset(v)}
             />
+            <div className="mt-3 flex items-center gap-3">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Start at
+              </label>
+              <input
+                type="text"
+                value={formatMmSsCs(overlayOffset)}
+                onChange={(e) => {
+                  const v = parseMmSsCs(e.target.value);
+                  if (v !== null) setOverlayOffset(v);
+                }}
+                placeholder="0:00.00"
+                className="h-9 w-24 rounded-none bg-background border border-border px-2 text-sm font-mono tabular-nums text-center focus:outline-none focus:border-primary"
+              />
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                mm:ss.cs · type to fine-tune
+              </span>
+            </div>
           </Section>
         )}
 
