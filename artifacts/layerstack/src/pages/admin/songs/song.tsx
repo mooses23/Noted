@@ -255,6 +255,7 @@ export default function AdminSongDetail() {
           <PublishVersionPanel
             songId={songId}
             shortlistedCommits={shortlistedCommits ?? []}
+            rounds={rounds ?? []}
           />
         </TabsContent>
 
@@ -351,9 +352,11 @@ function CommitReviewCard({
 function PublishVersionPanel({
   songId,
   shortlistedCommits,
+  rounds,
 }: {
   songId: string;
   shortlistedCommits: CommitSummary[];
+  rounds: Round[];
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -361,6 +364,27 @@ function PublishVersionPanel({
   const [mergeNote, setMergeNote] = useState("");
   const [officialMixPath, setOfficialMixPath] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const roundById = new Map(rounds.map((r) => [r.id, r]));
+  const onToggleSelect = (commit: CommitSummary, checked: boolean) => {
+    setSelected((s) => {
+      const next = { ...s, [commit.id]: checked };
+      if (checked) {
+        const round = roundById.get(commit.roundId);
+        if (round?.mergeBehavior === "single") {
+          for (const other of shortlistedCommits) {
+            if (
+              other.id !== commit.id &&
+              other.roundId === commit.roundId &&
+              next[other.id]
+            ) {
+              next[other.id] = false;
+            }
+          }
+        }
+      }
+      return next;
+    });
+  };
   const publish = useAdminCreateVersion();
   const { uploadFile, isUploading, progress } = useUpload({
     onSuccess: (r) => {
@@ -392,6 +416,24 @@ function PublishVersionPanel({
         variant: "destructive",
       });
       return;
+    }
+    // Pre-submit merge-behavior validation matches server enforcement.
+    const counts = new Map<string, number>();
+    for (const id of mergedCommitIds) {
+      const c = shortlistedCommits.find((s) => s.id === id);
+      if (!c) continue;
+      counts.set(c.roundId, (counts.get(c.roundId) ?? 0) + 1);
+    }
+    for (const [rid, count] of counts) {
+      const r = roundById.get(rid);
+      if (r?.mergeBehavior === "single" && count > 1) {
+        toast({
+          title: "Single-winner round",
+          description: `Round "${r.title}" only allows one merged commit. Pick exactly one.`,
+          variant: "destructive",
+        });
+        return;
+      }
     }
     publish.mutate(
       {
@@ -501,15 +543,16 @@ function PublishVersionPanel({
                 <input
                   type="checkbox"
                   checked={!!selected[c.id]}
-                  onChange={(e) =>
-                    setSelected((s) => ({ ...s, [c.id]: e.target.checked }))
-                  }
+                  onChange={(e) => onToggleSelect(c, e.target.checked)}
                 />
                 <div className="flex-1">
                   <div className="font-medium">{c.title}</div>
                   <div className="text-xs text-muted-foreground">
-                    Round {c.roundNumber} · {c.instrumentType} · by{" "}
-                    {c.contributor.displayName} · {c.voteCount} votes
+                    Round {c.roundNumber} · {c.instrumentType} ·{" "}
+                    {roundById.get(c.roundId)?.mergeBehavior === "single"
+                      ? "single-winner"
+                      : "multi-merge"}{" "}
+                    · by {c.contributor.displayName} · {c.voteCount} votes
                   </div>
                 </div>
               </label>
