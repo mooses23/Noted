@@ -449,6 +449,26 @@ paths:
               schema: { $ref: "#/components/schemas/CommitDraft" }
 
   /commits/drafts/{draftId}:
+    patch:
+      operationId: updateDraft
+      tags: [commits]
+      summary: Edit a saved Note draft (any subset of fields)
+      parameters:
+        - in: path
+          name: draftId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateDraftBody" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommitDraft" }
     delete:
       operationId: deleteDraft
       tags: [commits]
@@ -1431,6 +1451,24 @@ components:
       type: object
       properties:
         roundId: { type: string, format: uuid }
+
+    UpdateDraftBody:
+      type: object
+      description: Patch a saved Note draft. Any omitted field is left unchanged.
+      properties:
+        title: { type: string, minLength: 1, maxLength: 120 }
+        note:
+          type: string
+          maxLength: 500
+          nullable: true
+        instrumentType: { type: string, minLength: 1 }
+        audioObjectPath: { type: string, minLength: 1 }
+        overlayOffsetSeconds:
+          type: number
+          format: float
+          minimum: 0
+        displayNameOverride: { type: string }
+        socialHandle: { type: string }
 
     AdminAddSongFileBody:
       type: object

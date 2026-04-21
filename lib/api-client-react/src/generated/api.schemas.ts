@@ -524,6 +524,27 @@ export interface SubmitDraftBody {
   roundId?: string;
 }
 
+/**
+ * Patch a saved Note draft. Any omitted field is left unchanged.
+ */
+export interface UpdateDraftBody {
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  title?: string;
+  /** @maxLength 500 */
+  note?: string | null;
+  /** @minLength 1 */
+  instrumentType?: string;
+  /** @minLength 1 */
+  audioObjectPath?: string;
+  /** @minimum 0 */
+  overlayOffsetSeconds?: number;
+  displayNameOverride?: string;
+  socialHandle?: string;
+}
+
 export type AdminAddSongFileBodyFileType =
   (typeof AdminAddSongFileBodyFileType)[keyof typeof AdminAddSongFileBodyFileType];
 

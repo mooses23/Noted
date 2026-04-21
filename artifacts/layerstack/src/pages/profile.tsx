@@ -7,7 +7,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { Disc3, FileAudio, Send, Trash2 } from "lucide-react";
+import { Disc3, FileAudio, Pencil, Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -183,6 +183,17 @@ export default function Profile() {
                   >
                     Submit
                   </Button>
+                  <Link href={`/songs/${d.song.slug}/submit?draftId=${d.id}`}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-none uppercase tracking-widest text-[10px] h-9 w-full"
+                      data-testid={`button-edit-draft-${d.id}`}
+                    >
+                      <Pencil className="w-3 h-3 mr-1" />
+                      Edit
+                    </Button>
+                  </Link>
                   <Button
                     size="sm"
                     variant="ghost"

@@ -1069,6 +1069,88 @@ export const CreateDraftResponse = zod.object({
     .nullish(),
 });
 
+/**
+ * @summary Edit a saved Note draft (any subset of fields)
+ */
+export const UpdateDraftParams = zod.object({
+  draftId: zod.coerce.string().uuid(),
+});
+
+export const updateDraftBodyTitleMax = 120;
+
+export const updateDraftBodyNoteMax = 500;
+
+export const updateDraftBodyOverlayOffsetSecondsMin = 0;
+
+export const UpdateDraftBody = zod
+  .object({
+    title: zod.string().min(1).max(updateDraftBodyTitleMax).optional(),
+    note: zod.string().max(updateDraftBodyNoteMax).nullish(),
+    instrumentType: zod.string().min(1).optional(),
+    audioObjectPath: zod.string().min(1).optional(),
+    overlayOffsetSeconds: zod
+      .number()
+      .min(updateDraftBodyOverlayOffsetSecondsMin)
+      .optional(),
+    displayNameOverride: zod.string().optional(),
+    socialHandle: zod.string().optional(),
+  })
+  .describe("Patch a saved Note draft. Any omitted field is left unchanged.");
+
+export const UpdateDraftResponse = zod.object({
+  id: zod.string().uuid(),
+  songId: zod.string().uuid(),
+  contributorId: zod.string().uuid(),
+  title: zod.string(),
+  note: zod.string().nullish(),
+  instrumentType: zod.string(),
+  audioFileUrl: zod.string(),
+  overlayOffsetSeconds: zod.number(),
+  displayNameOverride: zod.string().nullish(),
+  socialHandle: zod.string().nullish(),
+  confirmedHumanMade: zod.boolean(),
+  confirmedRightsGrant: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+  song: zod.object({
+    id: zod.string().uuid(),
+    slug: zod.string(),
+    title: zod.string(),
+    description: zod.string().nullish(),
+    coverImageUrl: zod.string().nullish(),
+    creatorName: zod.string(),
+    genre: zod.string(),
+    bpm: zod.number(),
+    musicalKey: zod.string(),
+    timeSignature: zod.string().nullish(),
+    status: zod.enum(["draft", "active", "archived"]),
+    phase: zod.enum(["structure", "accents"]),
+    currentVersionId: zod.string().uuid().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date().optional(),
+  }),
+  eligibleRound: zod
+    .object({
+      id: zod.string().uuid(),
+      songId: zod.string().uuid(),
+      roundNumber: zod.number(),
+      title: zod.string(),
+      description: zod.string().nullish(),
+      allowedInstrumentType: zod.string(),
+      kind: zod.enum(["structure", "accent"]),
+      mergeBehavior: zod.enum(["single", "multi"]),
+      status: zod.enum(["draft", "open", "closed", "merged"]),
+      opensAt: zod.coerce.date().nullish(),
+      closesAt: zod.coerce.date().nullish(),
+      baseVersionId: zod.string().uuid().nullish(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date().optional(),
+      commitCount: zod.number().nullish(),
+      totalVotes: zod.number().nullish(),
+    })
+    .nullish(),
+});
+
 export const DeleteDraftParams = zod.object({
   draftId: zod.coerce.string().uuid(),
 });
