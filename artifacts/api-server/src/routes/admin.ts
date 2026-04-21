@@ -162,9 +162,28 @@ router.post("/rounds", async (req: Request, res: Response) => {
     .from(roundsTable)
     .where(eq(roundsTable.songId, b.songId));
   const [song] = await db
-    .select({ currentVersionId: songsTable.currentVersionId })
+    .select({ currentVersionId: songsTable.currentVersionId, phase: songsTable.phase })
     .from(songsTable)
     .where(eq(songsTable.id, b.songId));
+  if (!song) {
+    res.status(404).json({ error: "Song not found" });
+    return;
+  }
+  const requestedKind = b.kind ?? "structure";
+  if (song.phase === "structure" && requestedKind === "accent") {
+    res.status(400).json({
+      error:
+        "This song is still in the structure phase. Advance the song to accents before creating accent rounds.",
+    });
+    return;
+  }
+  if (song.phase === "accents" && requestedKind === "structure") {
+    res.status(400).json({
+      error:
+        "This song is in the accents phase. Structure rounds are locked. Revert the song to structure to add a foundation round.",
+    });
+    return;
+  }
   const [created] = await db
     .insert(roundsTable)
     .values({
@@ -173,8 +192,8 @@ router.post("/rounds", async (req: Request, res: Response) => {
       title: b.title,
       description: b.description ?? null,
       allowedInstrumentType: b.allowedInstrumentType,
-      kind: b.kind ?? "structure",
-      mergeBehavior: b.mergeBehavior ?? (b.kind === "accent" ? "multi" : "single"),
+      kind: requestedKind,
+      mergeBehavior: b.mergeBehavior ?? (requestedKind === "accent" ? "multi" : "single"),
       status: b.status ?? "open",
       opensAt: b.opensAt ? new Date(b.opensAt) : new Date(),
       closesAt: b.closesAt ? new Date(b.closesAt) : null,

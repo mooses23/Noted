@@ -414,6 +414,9 @@ async function main() {
     );
   }
 
+  // 9c. Second demo song — already in the accents phase, with an open accent round.
+  await seedAccentsPhaseDemo({ mara: mara!, jules: jules!, kenji: kenji!, ilse: ilse!, sade: sade!, thiago: thiago!, alex: alex! });
+
   // 10. URL sync — keep seeded rows pointing at the current .mp3 storage keys
   //     even if a prior run wrote .wav URLs.
   const urlSyncs: Array<[string, string]> = [
@@ -458,9 +461,174 @@ async function main() {
   }
 
   console.log("✓ Seed complete");
-  console.log(`  Song: ${song!.title} (slug: ${slug})`);
+  console.log(`  Song: ${song!.title} (slug: ${slug}) — phase: structure`);
+  console.log(`  Song: Ember & Iron (slug: ember-and-iron) — phase: accents`);
   console.log(`  Profiles: ${profiles.length}`);
-  console.log(`  Round 2 is OPEN for drums.`);
+  console.log(`  Round 2 of The Long Room is OPEN for drums.`);
+  console.log(`  Ember & Iron has an OPEN accent round (claps & one-shots).`);
+}
+
+type Profile = { id: string; displayName: string };
+
+async function seedAccentsPhaseDemo(p: {
+  mara: Profile; jules: Profile; kenji: Profile; ilse: Profile;
+  sade: Profile; thiago: Profile; alex: Profile;
+}) {
+  const slug = "ember-and-iron";
+  let [song] = await db.select().from(songsTable).where(eq(songsTable.slug, slug)).limit(1);
+  if (!song) {
+    [song] = await db
+      .insert(songsTable)
+      .values({
+        slug,
+        title: "Ember & Iron",
+        description:
+          "Foundation is locked. Now we shape the signature moments — the claps, the stabs, the things that make a song feel inevitable.",
+        creatorName: "Mara Rowan",
+        genre: "Cinematic Folk",
+        bpm: 84,
+        musicalKey: "A minor",
+        timeSignature: "4/4",
+        status: "active",
+        featured: false,
+        phase: "accents",
+      })
+      .returning();
+  } else if (song.phase !== "accents") {
+    await db
+      .update(songsTable)
+      .set({ phase: "accents", updatedAt: new Date() })
+      .where(eq(songsTable.id, song.id));
+    song.phase = "accents";
+  }
+  const songId = song!.id;
+
+  // Version 1 (foundation locked)
+  const versions = await db.select().from(versionsTable).where(eq(versionsTable.songId, songId));
+  let foundation = versions.find((v) => v.versionNumber === 1);
+  if (!foundation) {
+    [foundation] = await db
+      .insert(versionsTable)
+      .values({
+        songId,
+        versionNumber: 1,
+        title: "v1 — Foundation locked",
+        description: "Bass + drums merged. Structure phase complete.",
+        officialMixUrl: "/objects/seed/the-long-room-v2.mp3",
+        isCurrent: true,
+      })
+      .returning();
+    await db
+      .update(songsTable)
+      .set({ currentVersionId: foundation!.id, updatedAt: new Date() })
+      .where(eq(songsTable.id, songId));
+  }
+
+  // Two merged structure rounds (historical context)
+  const existingRounds = await db.select().from(roundsTable).where(eq(roundsTable.songId, songId));
+  if (existingRounds.length === 0) {
+    await db.insert(roundsTable).values([
+      {
+        songId,
+        roundNumber: 1,
+        title: "Round 1 — Bass",
+        description: "Foundation bass. Merged.",
+        allowedInstrumentType: "bass",
+        kind: "structure",
+        mergeBehavior: "single",
+        status: "merged",
+        baseVersionId: foundation!.id,
+        opensAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30),
+        closesAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 24),
+      },
+      {
+        songId,
+        roundNumber: 2,
+        title: "Round 2 — Drums",
+        description: "Foundation drums. Merged.",
+        allowedInstrumentType: "drums",
+        kind: "structure",
+        mergeBehavior: "single",
+        status: "merged",
+        baseVersionId: foundation!.id,
+        opensAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 21),
+        closesAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 14),
+      },
+    ]);
+  }
+
+  // Open accent round (multi-merge)
+  const allRounds = await db.select().from(roundsTable).where(eq(roundsTable.songId, songId));
+  let accentRound = allRounds.find((r) => r.roundNumber === 3);
+  if (!accentRound) {
+    [accentRound] = await db
+      .insert(roundsTable)
+      .values({
+        songId,
+        roundNumber: 3,
+        title: "Round 3 — Claps & one-shots",
+        description:
+          "Signature moments only. Short takes, single hits, anything with character. Multiple winners may be merged.",
+        allowedInstrumentType: "percussion",
+        kind: "accent",
+        mergeBehavior: "multi",
+        status: "open",
+        baseVersionId: foundation!.id,
+        opensAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
+        closesAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 5),
+      })
+      .returning();
+  }
+
+  // Mock accent commits — short / signature
+  const accentSubmissions = [
+    { contributor: p.kenji,  title: "808 clap, downbeats 2 & 4", url: "/objects/seed/commit-kenji-drums.mp3" },
+    { contributor: p.sade,   title: "Rim snap, off-grid",        url: "/objects/seed/commit-sade-drums.mp3" },
+    { contributor: p.thiago, title: "Hand-claps, room mic",      url: "/objects/seed/commit-thiago-drums.mp3" },
+    { contributor: p.ilse,   title: "Ad-lib 'oh' on the turn",   url: "/objects/seed/commit-ilse-drums.mp3" },
+  ];
+  const existingAccentCommits = await db
+    .select()
+    .from(commitsTable)
+    .where(eq(commitsTable.roundId, accentRound!.id));
+  const accentCommits: { id: string; contributorId: string }[] = [];
+  if (existingAccentCommits.length === 0) {
+    for (const s of accentSubmissions) {
+      const [c] = await db
+        .insert(commitsTable)
+        .values({
+          songId,
+          roundId: accentRound!.id,
+          contributorId: s.contributor.id,
+          title: s.title,
+          instrumentType: "percussion",
+          kind: "accent",
+          audioFileUrl: s.url,
+          previewMixUrl: "/objects/seed/the-long-room-v2.mp3",
+          status: "pending",
+          confirmedHumanMade: true,
+          confirmedRightsGrant: true,
+        })
+        .returning();
+      accentCommits.push(c!);
+    }
+  } else {
+    for (const c of existingAccentCommits) accentCommits.push(c);
+  }
+
+  // Spread votes — accents tend to gather many, smaller bouquets
+  const voters = [p.mara, p.jules, p.kenji, p.ilse, p.sade, p.thiago, p.alex];
+  for (let i = 0; i < accentCommits.length; i++) {
+    const commit = accentCommits[i];
+    const pool = voters.slice(0, 3 + ((i * 2) % voters.length));
+    for (const v of pool) {
+      if (v.id === commit!.contributorId) continue;
+      await db
+        .insert(votesTable)
+        .values({ voterId: v.id, commitId: commit!.id })
+        .onConflictDoNothing();
+    }
+  }
 }
 
 main()
