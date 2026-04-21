@@ -15,7 +15,7 @@ import { uploadSeedAudio } from "./lib/seed-audio";
 import { DEMO_SONG_CREDITS, CC_BY_3_LICENSE } from "@workspace/seed-content";
 
 async function main() {
-  console.log("Seeding LayerStack...");
+  console.log("Seeding Noted...");
 
   await uploadSeedAudio();
 
@@ -171,6 +171,8 @@ async function main() {
         title: "Round 1 — Bass",
         description: "Lay down the low end. Upright, electric, sub — whatever fits.",
         allowedInstrumentType: "bass",
+        kind: "structure",
+        mergeBehavior: "single",
         status: "merged",
         baseVersionId: v1!.id,
         opensAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 14),
@@ -201,6 +203,7 @@ async function main() {
         title: "Upright, walking under the verses",
         note: "Tried to stay out of the way of the piano. One take, a little breath on the low D.",
         instrumentType: "bass",
+        kind: "structure",
         audioFileUrl: "/objects/seed/commit-jules-bass.mp3",
         previewMixUrl: "/objects/seed/the-long-room-v2.mp3",
         status: "merged",
@@ -262,6 +265,8 @@ async function main() {
         description:
           "Brushes or sticks — your call. Keep the room in it. No triggers, no samples.",
         allowedInstrumentType: "drums",
+        kind: "structure",
+        mergeBehavior: "single",
         status: "open",
         baseVersionId: v2!.id,
         opensAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
@@ -331,6 +336,7 @@ async function main() {
           title: s.title,
           note: s.note,
           instrumentType: "drums",
+          kind: "structure",
           audioFileUrl: s.url,
           previewMixUrl: drumLayeredPlaceholder,
           status: "pending",

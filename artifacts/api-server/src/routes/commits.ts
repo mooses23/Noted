@@ -255,6 +255,7 @@ router.post("/commits/submit", requireAuth, async (req: Request, res: Response) 
       title: body.title,
       note: body.note ?? null,
       instrumentType: body.instrumentType,
+      kind: round.kind,
       audioFileUrl: body.audioObjectPath,
       status: "pending",
       confirmedHumanMade: true,

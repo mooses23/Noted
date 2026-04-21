@@ -29,6 +29,7 @@ import {
   AdminAddSongFileBody,
   AdminCreateRoundBody,
   AdminUpdateRoundBody,
+  AdminAdvanceSongPhaseBody,
   AdminSetCommitStatusBody,
   AdminCreateVersionBody,
   AdminCreateSongCreditBody,
@@ -74,6 +75,7 @@ router.post("/songs", async (req: Request, res: Response) => {
       musicalKey: b.musicalKey,
       timeSignature: b.timeSignature ?? null,
       status: b.status ?? "active",
+      phase: b.phase ?? "structure",
     })
     .returning();
   res.json(toSong(created!));
@@ -93,6 +95,7 @@ router.patch("/songs/:songId", async (req: Request, res: Response) => {
       ...(b.musicalKey !== undefined ? { musicalKey: b.musicalKey } : {}),
       ...(b.timeSignature !== undefined ? { timeSignature: b.timeSignature } : {}),
       ...(b.status !== undefined ? { status: b.status } : {}),
+      ...(b.phase !== undefined ? { phase: b.phase } : {}),
       ...(b.coverImageUrl !== undefined ? { coverImageUrl: b.coverImageUrl } : {}),
       updatedAt: new Date(),
     })
@@ -102,6 +105,28 @@ router.patch("/songs/:songId", async (req: Request, res: Response) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
+  res.json(toSong(updated));
+});
+
+router.post("/songs/:songId/advance-phase", async (req: Request, res: Response) => {
+  const b = parseBody(AdminAdvanceSongPhaseBody, req.body, res);
+  if (!b) return;
+  const songId = req.params.songId as string;
+  const actor = (req as Request & { profile: { id: string } }).profile;
+  const [updated] = await db
+    .update(songsTable)
+    .set({ phase: b.phase, updatedAt: new Date() })
+    .where(eq(songsTable.id, songId))
+    .returning();
+  if (!updated) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  await db.insert(adminActionsTable).values({
+    actorId: actor.id,
+    action: `advance_phase:${b.phase}`,
+    payload: JSON.stringify({ songId }),
+  });
   res.json(toSong(updated));
 });
 
@@ -148,6 +173,8 @@ router.post("/rounds", async (req: Request, res: Response) => {
       title: b.title,
       description: b.description ?? null,
       allowedInstrumentType: b.allowedInstrumentType,
+      kind: b.kind ?? "structure",
+      mergeBehavior: b.mergeBehavior ?? (b.kind === "accent" ? "multi" : "single"),
       status: b.status ?? "open",
       opensAt: b.opensAt ? new Date(b.opensAt) : new Date(),
       closesAt: b.closesAt ? new Date(b.closesAt) : null,
@@ -168,6 +195,8 @@ router.patch("/rounds/:roundId", async (req: Request, res: Response) => {
       ...(b.allowedInstrumentType !== undefined
         ? { allowedInstrumentType: b.allowedInstrumentType }
         : {}),
+      ...(b.kind !== undefined ? { kind: b.kind } : {}),
+      ...(b.mergeBehavior !== undefined ? { mergeBehavior: b.mergeBehavior } : {}),
       ...(b.status !== undefined ? { status: b.status } : {}),
       ...(b.opensAt !== undefined
         ? { opensAt: b.opensAt ? new Date(b.opensAt) : null }

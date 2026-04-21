@@ -35,7 +35,7 @@ export default function Home() {
           </h1>
           
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mb-12 font-sans">
-            LayerStack is where the community builds songs together, one instrument layer at a time. No AI allowed. Real hands on real instruments.
+            Noted is where the community builds songs together, one instrument layer at a time. No AI allowed. Real hands on real instruments.
           </p>
 
           {isFeaturedLoading ? (
@@ -149,10 +149,10 @@ export default function Home() {
               <h2 className="text-4xl font-serif font-bold mb-6">The Manifesto</h2>
               <div className="prose prose-invert max-w-none text-muted-foreground mb-8">
                 <p className="text-xl leading-relaxed">
-                  We are drowning in algorithmic slop. LayerStack is a response. A sanctuary for real musicians.
+                  We are drowning in algorithmic slop. Noted is a response. A sanctuary for real musicians.
                 </p>
                 <p>
-                  Every layer on this platform was played by human hands, sung by human voices, programmed by human minds. We believe music is a conversation, not a prompt. When you listen to a LayerStack track, you are hearing the collective effort of real people across the globe.
+                  Every layer on this platform was played by human hands, sung by human voices, programmed by human minds. We believe music is a conversation, not a prompt. When you listen to a Noted track, you are hearing the collective effort of real people across the globe.
                 </p>
               </div>
               <Link href="/manifesto">

@@ -155,7 +155,7 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     const objectPath = `/objects/${wildcardPath}`;
     const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
 
-    // Audio and images on LayerStack are public-by-default; if an object has
+    // Audio and images on Noted are public-by-default; if an object has
     // an ACL policy attached, it is enforced. Objects without a policy are
     // treated as public-readable (see objectAcl.ts).
     const profile = await getSessionProfile(req);

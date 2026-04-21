@@ -2,7 +2,7 @@ export default function Manifesto() {
   return (
     <div className="container mx-auto px-6 py-20 max-w-3xl">
       <h1 className="text-5xl md:text-6xl font-serif font-bold tracking-tighter mb-12">
-        The LayerStack Manifesto
+        The Noted Manifesto
       </h1>
       
       <div className="prose prose-invert prose-lg max-w-none">
@@ -12,7 +12,7 @@ export default function Manifesto() {
 
         <h2 className="font-serif text-3xl mt-12 mb-6">1. Strictly Human-Made</h2>
         <p>
-          Every bassline, every vocal take, every drum groove on LayerStack must be performed, sequenced, or created by a human. No generative AI. No prompt-to-audio. No algorithmic replacements for human expression. When you listen to a track built here, you are hearing the collective effort of real musicians.
+          Every bassline, every vocal take, every drum groove on Noted must be performed, sequenced, or created by a human. No generative AI. No prompt-to-audio. No algorithmic replacements for human expression. When you listen to a track built here, you are hearing the collective effort of real musicians.
         </p>
 
         <h2 className="font-serif text-3xl mt-12 mb-6">2. The Seed is Just the Beginning</h2>

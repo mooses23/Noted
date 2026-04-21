@@ -1,18 +1,28 @@
-# LayerStack
+# Noted
 
-LayerStack is a collaborative, human-made music platform. The community starts
+Noted is a collaborative, human-made music platform. The community starts
 with a "seed" song — a base mix plus a click track and a few stems — and then
 contributes new instrument layers ("commits") to it, one open round at a time.
-Each round targets a specific instrument (bass, drums, etc.). Listeners vote
-on submitted commits, and admins merge the best one into the next version of
-the song. Strictly human-made: no AI-generated audio.
+
+Songs evolve through two lifecycle **phases**:
+
+1. **Structure** — the foundation rounds. Drums, bass, harmony, melody. Each
+   round targets a specific instrument and curators merge a single winner.
+2. **Accents** — once the structure is locked, the song moves to accents:
+   the signature sonic moments (claps, one-shots, stabs, vocal bursts).
+   Accent rounds are typically **stackable**, so multiple winning submissions
+   can be layered into the same official mix.
+
+Listeners vote on submitted commits, and admins merge the chosen ones into
+the next version of the song. Strictly human-made: no AI-generated audio,
+no AI-written copy.
 
 This repo is a pnpm monorepo containing the web app, the API, the shared
 libraries that connect them, the seed/demo content, and a UI mockup sandbox.
 
 ## Artifacts
 
-- **`artifacts/layerstack`** — the LayerStack web app (React + Vite + Tailwind).
+- **`artifacts/layerstack`** — the Noted web app (React + Vite + Tailwind).
   This is the user-facing site: songs, commits feed, voting, profile, admin.
 - **`artifacts/api-server`** — the Express 5 + TypeScript API. Talks to
   PostgreSQL through Drizzle, validates with Zod, and authenticates with Clerk.

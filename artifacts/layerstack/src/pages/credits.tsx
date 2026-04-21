@@ -18,7 +18,7 @@ function CreditsWall() {
           The Credits Wall
         </h1>
         <p className="text-lg text-muted-foreground">
-          The permanent record of musicians who have shaped official LayerStack tracks. 
+          The permanent record of musicians who have shaped official Noted tracks. 
           Every merged commit earns its creator a place here.
         </p>
       </div>
