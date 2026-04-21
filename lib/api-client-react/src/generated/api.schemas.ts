@@ -443,6 +443,17 @@ export interface AdminCreateVersionBody {
   mergedCommitIds: string[];
 }
 
+export interface AdminPreviewVersionMixBody {
+  songId: string;
+  /** @minItems 1 */
+  mergedCommitIds: string[];
+}
+
+export interface AdminPreviewVersionMixResponse {
+  objectPath: string;
+  sizeBytes: number;
+}
+
 export type RequestUploadUrlBodyPurpose =
   (typeof RequestUploadUrlBodyPurpose)[keyof typeof RequestUploadUrlBodyPurpose];
 

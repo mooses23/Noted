@@ -12,6 +12,7 @@ import {
   useAdminSetCommitStatus,
   useAdminListCommits,
   useAdminCreateVersion,
+  useAdminPreviewVersionMix,
   useAdminCreateSongCredit,
   useAdminUpdateSongCredit,
   useAdminDeleteSongCredit,
@@ -386,9 +387,12 @@ function PublishVersionPanel({
     });
   };
   const publish = useAdminCreateVersion();
+  const previewMix = useAdminPreviewVersionMix();
+  const [autoMixed, setAutoMixed] = useState(false);
   const { uploadFile, isUploading, progress } = useUpload({
     onSuccess: (r) => {
       setOfficialMixPath(r.objectPath);
+      setAutoMixed(false);
       toast({ title: "Official mix uploaded" });
     },
     onError: (err) =>
@@ -402,6 +406,42 @@ function PublishVersionPanel({
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) uploadFile(file, { purpose: "official-mix", songId });
+  };
+
+  const handleAutoMix = () => {
+    const mergedCommitIds = Object.entries(selected)
+      .filter(([, v]) => v)
+      .map(([k]) => k);
+    if (mergedCommitIds.length === 0) {
+      toast({
+        title: "No commits selected",
+        description: "Pick at least one shortlisted commit to auto-mix.",
+        variant: "destructive",
+      });
+      return;
+    }
+    previewMix.mutate(
+      { data: { songId, mergedCommitIds } },
+      {
+        onSuccess: (r) => {
+          setOfficialMixPath(r.objectPath);
+          setAutoMixed(true);
+          toast({
+            title: "Auto-mix ready",
+            description: "Preview it below before publishing.",
+          });
+        },
+        onError: (err) => {
+          // Server returns 502 on soft-failure so curators can fall back
+          // to manual upload as today.
+          toast({
+            title: "Auto-mix failed",
+            description: `${String(err)} — you can still upload a mix manually.`,
+            variant: "destructive",
+          });
+        },
+      },
+    );
   };
 
   const submit = () => {
@@ -451,6 +491,7 @@ function PublishVersionPanel({
           setTitle("");
           setMergeNote("");
           setOfficialMixPath("");
+          setAutoMixed(false);
           setSelected({});
           queryClient.invalidateQueries({
             queryKey: getGetSongQueryKey(songId),
@@ -516,14 +557,38 @@ function PublishVersionPanel({
             onChange={handleFile}
             className="rounded-none"
           />
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-none whitespace-nowrap"
+            onClick={handleAutoMix}
+            disabled={previewMix.isPending}
+          >
+            {previewMix.isPending ? "Mixing…" : "Auto-mix selected"}
+          </Button>
           <span className="text-xs text-muted-foreground">
             {isUploading
               ? `Uploading ${progress}%`
               : officialMixPath
-                ? "Uploaded ✓"
+                ? autoMixed
+                  ? "Auto-mix ready ✓"
+                  : "Uploaded ✓"
                 : ""}
           </span>
         </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Auto-mix layers the song's current official mix with each selected
+          commit. If it fails, the mastered upload above still works.
+        </p>
+        {officialMixPath && (
+          <audio
+            key={officialMixPath}
+            controls
+            preload="metadata"
+            src={`/api/storage${officialMixPath}`}
+            className="mt-3 w-full"
+          />
+        )}
       </div>
 
       <div>
