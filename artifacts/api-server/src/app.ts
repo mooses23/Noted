@@ -1,3 +1,12 @@
+// MUST be the first import in this file. ESM hoists imports, and
+// envValidation runs as a module-load side effect that exits the process
+// in production when required env vars are missing/malformed. Putting it
+// first ensures validation runs before any other module (sentry, router,
+// @workspace/db, etc.) is evaluated — those modules read process.env at
+// load time and would otherwise crash with a single, less informative
+// error before our consolidated check could fire.
+import "./lib/envValidation";
+
 import { initSentry, Sentry } from "./lib/sentry";
 
 // Sentry must be initialized before importing the rest of the app so its
@@ -45,37 +54,19 @@ const rawAllowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
   .map((s) => s.trim())
   .filter(Boolean);
 
-const invalidOrigins: string[] = [];
+// ALLOWED_ORIGINS validity is enforced centrally by validateProductionEnv()
+// at startup; in production we only reach this point with a well-formed
+// allowlist. In dev we silently drop malformed entries so a typo doesn't
+// crash local runs.
 const corsAllowlist: string[] = [];
 for (const entry of rawAllowedOrigins) {
   try {
     const url = new URL(entry);
-    if (url.protocol !== "http:" && url.protocol !== "https:") {
-      invalidOrigins.push(entry);
-      continue;
+    if (url.protocol === "http:" || url.protocol === "https:") {
+      corsAllowlist.push(entry);
     }
-    corsAllowlist.push(entry);
   } catch {
-    invalidOrigins.push(entry);
-  }
-}
-
-if (isProduction) {
-  if (rawAllowedOrigins.length === 0) {
-    logger.error(
-      "*** CORS MISCONFIGURATION: ALLOWED_ORIGINS is missing or empty in production. " +
-        "All browser requests will be rejected. Set ALLOWED_ORIGINS to a comma-separated " +
-        "list of allowed origins (e.g. https://example.com,https://app.example.com). ***",
-    );
-  }
-  if (invalidOrigins.length > 0) {
-    logger.error(
-      { invalidOrigins },
-      `*** CORS MISCONFIGURATION: ALLOWED_ORIGINS contains ${invalidOrigins.length} ` +
-        `invalid entr${invalidOrigins.length === 1 ? "y" : "ies"}: ` +
-        `${invalidOrigins.map((v) => JSON.stringify(v)).join(", ")}. ` +
-        "Each entry must be a full URL with an http:// or https:// scheme. ***",
-    );
+    // ignore: prod startup validator already rejected malformed entries
   }
 }
 
