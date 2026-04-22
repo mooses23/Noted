@@ -1,0 +1,93 @@
+03:17:47.337 Running build in Washington, D.C., USA (East) – iad1
+03:17:47.337 Build machine configuration: 2 cores, 8 GB
+03:17:47.347 Cloning github.com/mooses23/Noted (Branch: Main, Commit: 22c2b66)
+03:17:47.348 Skipping build cache, deployment was triggered without cache.
+03:17:47.933 Cloning completed: 586.000ms
+03:17:48.592 Running "vercel build"
+03:17:49.310 Vercel CLI 51.6.1
+03:17:49.417 Detected OpenTelemetry dependency: @opentelemetry/api@1.9.1, which meets the minimum version requirement of 1.7.0
+03:17:49.846 > Installing Builder: @vercel/node@5.1.0
+03:18:01.795 > Detected ENABLE_EXPERIMENTAL_COREPACK=1 and "pnpm@10.28.0" in package.json
+03:18:01.983 Running "install" command: `pnpm install --frozen-lockfile`...
+03:18:02.052 ! Corepack is about to download https://registry.npmjs.org/pnpm/-/pnpm-10.28.0.tgz
+03:18:03.168 Scope: all 11 workspace projects
+03:18:03.385 ../..                                    | Progress: resolved 1, reused 0, downloaded 0, added 0
+03:18:03.455 ../..                                    | +682 ++++++++++++++++++++++++++++++++
+03:18:04.387 ../..                                    | Progress: resolved 682, reused 0, downloaded 48, added 15
+03:18:05.387 ../..                                    | Progress: resolved 682, reused 0, downloaded 203, added 95
+03:18:06.405 ../..                                    | Progress: resolved 682, reused 0, downloaded 276, added 119
+03:18:07.389 ../..                                    | Progress: resolved 682, reused 0, downloaded 381, added 160
+03:18:08.418 ../..                                    | Progress: resolved 682, reused 0, downloaded 467, added 190
+03:18:09.391 ../..                                    | Progress: resolved 682, reused 0, downloaded 483, added 194
+03:18:10.421 ../..                                    | Progress: resolved 682, reused 0, downloaded 491, added 198
+03:18:11.392 ../..                                    | Progress: resolved 682, reused 0, downloaded 515, added 203
+03:18:12.404 ../..                                    | Progress: resolved 682, reused 0, downloaded 582, added 227
+03:18:13.393 ../..                                    | Progress: resolved 682, reused 0, downloaded 682, added 279
+03:18:14.397 ../..                                    | Progress: resolved 682, reused 0, downloaded 682, added 476
+03:18:15.393 ../..                                    | Progress: resolved 682, reused 0, downloaded 682, added 484
+03:18:16.398 ../..                                    | Progress: resolved 682, reused 0, downloaded 682, added 509
+03:18:17.348 ../..                                    | Progress: resolved 682, reused 0, downloaded 682, added 682, done
+03:18:17.573 .../esbuild@0.27.3/node_modules/esbuild postinstall$ node install.js
+03:18:17.661 .../esbuild@0.27.3/node_modules/esbuild postinstall: Done
+03:18:18.012 
+03:18:18.013 dependencies:
+03:18:18.013 + @clerk/express 2.1.5
+03:18:18.013 + @google-cloud/storage 7.19.0
+03:18:18.014 + @opentelemetry/api 1.9.1
+03:18:18.014 + @sentry/node 10.49.0
+03:18:18.014 + @workspace/api-zod 0.0.0 <- ../../lib/api-zod
+03:18:18.014 + @workspace/db 0.0.0 <- ../../lib/db
+03:18:18.014 + cookie-parser 1.4.7
+03:18:18.014 + cors 2.8.6
+03:18:18.015 + drizzle-orm 0.45.2
+03:18:18.016 + express 5.2.1
+03:18:18.016 + google-auth-library 10.6.2
+03:18:18.016 + http-proxy-middleware 3.0.5
+03:18:18.017 + pino 9.14.0
+03:18:18.017 + pino-http 10.5.0
+03:18:18.017 + zod 3.25.76
+03:18:18.017 
+03:18:18.017 devDependencies:
+03:18:18.018 + @types/cookie-parser 1.4.10
+03:18:18.018 + @types/cors 2.8.19
+03:18:18.018 + @types/express 5.0.6
+03:18:18.018 + @types/node 25.3.5
+03:18:18.018 + esbuild 0.27.3
+03:18:18.018 + esbuild-plugin-pino 2.3.3
+03:18:18.018 + pino-pretty 13.1.3
+03:18:18.019 + thread-stream 3.1.0
+03:18:18.019 + tsx 4.21.0
+03:18:18.019 
+03:18:18.060 ../.. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+03:18:18.070 ../.. preinstall: Done
+03:18:18.230 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+03:18:18.230 │                                                                              │
+03:18:18.231 │   Ignored build scripts: @clerk/shared@4.8.2, @sentry/cli@2.58.5.            │
+03:18:18.231 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+03:18:18.231 │   to run scripts.                                                            │
+03:18:18.232 │                                                                              │
+03:18:18.232 ╰──────────────────────────────────────────────────────────────────────────────╯
+03:18:18.247 Done in 15.4s using pnpm v10.28.0
+03:18:18.935 
+03:18:18.935   dist/handler.mjs      2.4mb ⚠️
+03:18:18.936   dist/handler.mjs.map  4.4mb
+03:18:18.936 
+03:18:18.936 ⚡ Done in 459ms
+03:18:19.088 Installing dependencies...
+03:18:19.513 Scope: all 11 workspace projects
+03:18:20.830 
+03:18:20.871 ../.. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+03:18:20.884 ../.. preinstall: Done
+03:18:21.004 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+03:18:21.004 │                                                                              │
+03:18:21.005 │   Ignored build scripts: @clerk/shared@4.8.2, @sentry/cli@2.58.5.            │
+03:18:21.005 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+03:18:21.005 │   to run scripts.                                                            │
+03:18:21.005 │                                                                              │
+03:18:21.005 ╰──────────────────────────────────────────────────────────────────────────────╯
+03:18:21.011 Done in 1.7s using pnpm v10.28.0
+03:18:21.252 Using TypeScript 5.9.3 (local user-provided)
+03:18:30.894 Build Completed in /vercel/output [29s]
+03:18:31.256 Deploying outputs...
+03:18:37.146 Deployment completed
+03:18:37.248 Creating build cache...
