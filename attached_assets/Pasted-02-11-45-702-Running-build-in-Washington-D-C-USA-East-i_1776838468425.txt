@@ -1,0 +1,86 @@
+02:11:45.702 Running build in Washington, D.C., USA (East) – iad1
+02:11:45.702 Build machine configuration: 2 cores, 8 GB
+02:11:45.819 Cloning github.com/mooses23/Noted (Branch: main, Commit: c36040c)
+02:11:45.820 Previous build caches not available.
+02:11:46.325 Cloning completed: 506.000ms
+02:11:46.811 Running "vercel build"
+02:11:47.507 Vercel CLI 51.6.1
+02:11:47.610 Detected OpenTelemetry dependency: @opentelemetry/api@1.9.1, which meets the minimum version requirement of 1.7.0
+02:11:48.015 > Installing Builder: @vercel/node@5.1.0
+02:11:58.849 > Detected ENABLE_EXPERIMENTAL_COREPACK=1 and "pnpm@10.28.0" in package.json
+02:11:59.239 Running "install" command: `pnpm install --frozen-lockfile`...
+02:11:59.302 ! Corepack is about to download https://registry.npmjs.org/pnpm/-/pnpm-10.28.0.tgz
+02:12:00.350 Scope: all 11 workspace projects
+02:12:00.520 ../..                                    | Progress: resolved 1, reused 0, downloaded 0, added 0
+02:12:00.614 ../..                                    | +682 ++++++++++++++++++++++++++++++++
+02:12:01.520 ../..                                    | Progress: resolved 682, reused 0, downloaded 65, added 24
+02:12:02.521 ../..                                    | Progress: resolved 682, reused 0, downloaded 207, added 92
+02:12:03.523 ../..                                    | Progress: resolved 682, reused 0, downloaded 290, added 124
+02:12:04.523 ../..                                    | Progress: resolved 682, reused 0, downloaded 415, added 184
+02:12:05.523 ../..                                    | Progress: resolved 682, reused 0, downloaded 475, added 204
+02:12:06.523 ../..                                    | Progress: resolved 682, reused 0, downloaded 484, added 208
+02:12:07.524 ../..                                    | Progress: resolved 682, reused 0, downloaded 490, added 208
+02:12:08.524 ../..                                    | Progress: resolved 682, reused 0, downloaded 559, added 232
+02:12:09.525 ../..                                    | Progress: resolved 682, reused 0, downloaded 667, added 275
+02:12:10.527 ../..                                    | Progress: resolved 682, reused 0, downloaded 682, added 455
+02:12:11.527 ../..                                    | Progress: resolved 682, reused 0, downloaded 682, added 482
+02:12:12.527 ../..                                    | Progress: resolved 682, reused 0, downloaded 682, added 499
+02:12:13.528 ../..                                    | Progress: resolved 682, reused 0, downloaded 682, added 672
+02:12:13.550 ../..                                    | Progress: resolved 682, reused 0, downloaded 682, added 682, done
+02:12:13.754 .../esbuild@0.27.3/node_modules/esbuild postinstall$ node install.js
+02:12:13.824 .../esbuild@0.27.3/node_modules/esbuild postinstall: Done
+02:12:14.163 
+02:12:14.164 dependencies:
+02:12:14.164 + @clerk/express 2.1.5
+02:12:14.165 + @google-cloud/storage 7.19.0
+02:12:14.165 + @opentelemetry/api 1.9.1
+02:12:14.166 + @sentry/node 10.49.0
+02:12:14.167 + @workspace/api-zod 0.0.0 <- ../../lib/api-zod
+02:12:14.167 + @workspace/db 0.0.0 <- ../../lib/db
+02:12:14.167 + cookie-parser 1.4.7
+02:12:14.168 + cors 2.8.6
+02:12:14.168 + drizzle-orm 0.45.2
+02:12:14.168 + express 5.2.1
+02:12:14.168 + google-auth-library 10.6.2
+02:12:14.168 + http-proxy-middleware 3.0.5
+02:12:14.169 + pino 9.14.0
+02:12:14.169 + pino-http 10.5.0
+02:12:14.169 + zod 3.25.76
+02:12:14.169 
+02:12:14.169 devDependencies:
+02:12:14.169 + @types/cookie-parser 1.4.10
+02:12:14.169 + @types/cors 2.8.19
+02:12:14.169 + @types/express 5.0.6
+02:12:14.169 + @types/node 25.3.5
+02:12:14.169 + esbuild 0.27.3
+02:12:14.169 + esbuild-plugin-pino 2.3.3
+02:12:14.169 + pino-pretty 13.1.3
+02:12:14.169 + thread-stream 3.1.0
+02:12:14.169 + tsx 4.21.0
+02:12:14.169 
+02:12:14.209 ../.. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+02:12:14.260 ../.. preinstall: Done
+02:12:14.422 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+02:12:14.423 │                                                                              │
+02:12:14.423 │   Ignored build scripts: @clerk/shared@4.8.2, @sentry/cli@2.58.5.            │
+02:12:14.423 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+02:12:14.424 │   to run scripts.                                                            │
+02:12:14.424 │                                                                              │
+02:12:14.424 ╰──────────────────────────────────────────────────────────────────────────────╯
+02:12:14.438 Done in 14.4s using pnpm v10.28.0
+02:12:14.584 No build step: api/[...all].ts is compiled by @vercel/node
+02:12:14.716 Installing dependencies...
+02:12:15.048 Scope: all 11 workspace projects
+02:12:16.282 
+02:12:16.320 ../.. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+02:12:16.332 ../.. preinstall: Done
+02:12:16.447 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+02:12:16.447 │                                                                              │
+02:12:16.448 │   Ignored build scripts: @clerk/shared@4.8.2, @sentry/cli@2.58.5.            │
+02:12:16.448 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+02:12:16.448 │   to run scripts.                                                            │
+02:12:16.448 │                                                                              │
+02:12:16.448 ╰──────────────────────────────────────────────────────────────────────────────╯
+02:12:16.453 Done in 1.6s using pnpm v10.28.0
+02:12:16.677 Using TypeScript 5.9.3 (local user-provided)
+02:12:19.864 Error: api/[...all].ts: Emit skipped
