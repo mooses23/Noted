@@ -1,0 +1,145 @@
+03:29:27.973 Running build in Washington, D.C., USA (East) – iad1
+03:29:27.973 Build machine configuration: 2 cores, 8 GB
+03:29:27.983 Cloning github.com/mooses23/Noted (Branch: Main, Commit: 22c2b66)
+03:29:27.983 Skipping build cache, deployment was triggered without cache.
+03:29:28.554 Cloning completed: 571.000ms
+03:29:29.060 Running "vercel build"
+03:29:29.994 Vercel CLI 51.6.1
+03:29:30.613 > Detected ENABLE_EXPERIMENTAL_COREPACK=1 and "pnpm@10.28.0" in package.json
+03:29:30.924 Running "install" command: `pnpm install --frozen-lockfile`...
+03:29:30.995 ! Corepack is about to download https://registry.npmjs.org/pnpm/-/pnpm-10.28.0.tgz
+03:29:32.225 Scope: all 11 workspace projects
+03:29:32.516 ../..                                    | Progress: resolved 1, reused 0, downloaded 0, added 0
+03:29:32.586 ../..                                    | +682 ++++++++++++++++++++++++++++++++
+03:29:33.517 ../..                                    | Progress: resolved 682, reused 0, downloaded 53, added 15
+03:29:34.518 ../..                                    | Progress: resolved 682, reused 0, downloaded 199, added 92
+03:29:35.518 ../..                                    | Progress: resolved 682, reused 0, downloaded 277, added 117
+03:29:36.525 ../..                                    | Progress: resolved 682, reused 0, downloaded 397, added 165
+03:29:37.529 ../..                                    | Progress: resolved 682, reused 0, downloaded 476, added 190
+03:29:38.533 ../..                                    | Progress: resolved 682, reused 0, downloaded 484, added 194
+03:29:39.534 ../..                                    | Progress: resolved 682, reused 0, downloaded 492, added 197
+03:29:40.542 ../..                                    | Progress: resolved 682, reused 0, downloaded 527, added 206
+03:29:41.543 ../..                                    | Progress: resolved 682, reused 0, downloaded 579, added 226
+03:29:42.545 ../..                                    | Progress: resolved 682, reused 0, downloaded 682, added 276
+03:29:43.545 ../..                                    | Progress: resolved 682, reused 0, downloaded 682, added 478
+03:29:44.548 ../..                                    | Progress: resolved 682, reused 0, downloaded 682, added 484
+03:29:45.548 ../..                                    | Progress: resolved 682, reused 0, downloaded 682, added 520
+03:29:46.507 ../..                                    | Progress: resolved 682, reused 0, downloaded 682, added 682, done
+03:29:46.746 .../esbuild@0.27.3/node_modules/esbuild postinstall$ node install.js
+03:29:46.832 .../esbuild@0.27.3/node_modules/esbuild postinstall: Done
+03:29:47.237 
+03:29:47.237 dependencies:
+03:29:47.237 + @sentry/react 10.49.0
+03:29:47.237 
+03:29:47.237 devDependencies:
+03:29:47.237 + @clerk/react 6.4.2
+03:29:47.237 + @hookform/resolvers 3.10.0
+03:29:47.237 + @radix-ui/react-accordion 1.2.12
+03:29:47.237 + @radix-ui/react-alert-dialog 1.1.15
+03:29:47.237 + @radix-ui/react-aspect-ratio 1.1.8
+03:29:47.237 + @radix-ui/react-avatar 1.1.11
+03:29:47.237 + @radix-ui/react-checkbox 1.3.3
+03:29:47.237 + @radix-ui/react-collapsible 1.1.12
+03:29:47.237 + @radix-ui/react-context-menu 2.2.16
+03:29:47.237 + @radix-ui/react-dialog 1.1.15
+03:29:47.237 + @radix-ui/react-dropdown-menu 2.1.16
+03:29:47.238 + @radix-ui/react-hover-card 1.1.15
+03:29:47.238 + @radix-ui/react-label 2.1.8
+03:29:47.238 + @radix-ui/react-menubar 1.1.16
+03:29:47.238 + @radix-ui/react-navigation-menu 1.2.14
+03:29:47.238 + @radix-ui/react-popover 1.1.15
+03:29:47.238 + @radix-ui/react-progress 1.1.8
+03:29:47.238 + @radix-ui/react-radio-group 1.3.8
+03:29:47.238 + @radix-ui/react-scroll-area 1.2.10
+03:29:47.238 + @radix-ui/react-select 2.2.6
+03:29:47.238 + @radix-ui/react-separator 1.1.8
+03:29:47.238 + @radix-ui/react-slider 1.3.6
+03:29:47.238 + @radix-ui/react-slot 1.2.4
+03:29:47.238 + @radix-ui/react-switch 1.2.6
+03:29:47.238 + @radix-ui/react-tabs 1.1.13
+03:29:47.238 + @radix-ui/react-toast 1.2.15
+03:29:47.238 + @radix-ui/react-toggle 1.1.10
+03:29:47.238 + @radix-ui/react-toggle-group 1.1.11
+03:29:47.238 + @radix-ui/react-tooltip 1.2.8
+03:29:47.238 + @replit/vite-plugin-cartographer 0.5.1
+03:29:47.238 + @replit/vite-plugin-dev-banner 0.1.2
+03:29:47.238 + @replit/vite-plugin-runtime-error-modal 0.0.6
+03:29:47.238 + @sentry/vite-plugin 5.2.0
+03:29:47.238 + @tailwindcss/typography 0.5.19
+03:29:47.239 + @tailwindcss/vite 4.2.1
+03:29:47.239 + @tanstack/react-query 5.90.21
+03:29:47.239 + @types/node 25.3.5
+03:29:47.239 + @types/react 19.2.14
+03:29:47.239 + @types/react-dom 19.2.3
+03:29:47.239 + @uppy/aws-s3 5.1.0
+03:29:47.239 + @uppy/core 5.2.0
+03:29:47.240 + @uppy/dashboard 5.1.1
+03:29:47.240 + @uppy/react 5.2.0
+03:29:47.240 + @vitejs/plugin-react 5.1.4
+03:29:47.240 + @workspace/api-client-react 0.0.0 <- ../../lib/api-client-react
+03:29:47.240 + @workspace/object-storage-web 0.0.0 <- ../../lib/object-storage-web
+03:29:47.240 + @workspace/seed-content 0.0.0 <- ../../lib/seed-content
+03:29:47.240 + class-variance-authority 0.7.1
+03:29:47.240 + clsx 2.1.1
+03:29:47.240 + cmdk 1.1.1
+03:29:47.240 + date-fns 3.6.0
+03:29:47.240 + embla-carousel-react 8.6.0
+03:29:47.241 + framer-motion 12.35.1
+03:29:47.241 + input-otp 1.4.2
+03:29:47.241 + lucide-react 0.545.0
+03:29:47.241 + next-themes 0.4.6
+03:29:47.241 + react 19.1.0
+03:29:47.241 + react-day-picker 9.14.0
+03:29:47.241 + react-dom 19.1.0
+03:29:47.241 + react-hook-form 7.71.2
+03:29:47.241 + react-icons 5.6.0
+03:29:47.241 + react-resizable-panels 2.1.9
+03:29:47.241 + recharts 2.15.4
+03:29:47.241 + sonner 2.0.7
+03:29:47.241 + tailwind-merge 3.5.0
+03:29:47.241 + tailwindcss 4.2.1
+03:29:47.241 + tw-animate-css 1.4.0
+03:29:47.241 + vaul 1.1.2
+03:29:47.241 + vite 7.3.2
+03:29:47.241 + wouter 3.9.0
+03:29:47.241 + zod 3.25.76
+03:29:47.241 
+03:29:47.319 ../.. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+03:29:47.350 ../.. preinstall: Done
+03:29:47.480 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+03:29:47.480 │                                                                              │
+03:29:47.480 │   Ignored build scripts: @clerk/shared@4.8.2, @sentry/cli@2.58.5.            │
+03:29:47.480 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+03:29:47.480 │   to run scripts.                                                            │
+03:29:47.480 │                                                                              │
+03:29:47.480 ╰──────────────────────────────────────────────────────────────────────────────╯
+03:29:47.512 Done in 15.6s using pnpm v10.28.0
+03:29:47.989 
+03:29:47.989 > @workspace/layerstack@0.0.0 build /vercel/path0/artifacts/layerstack
+03:29:47.990 > vite build --config vite.config.ts && node scripts/build-vercel-output.mjs
+03:29:47.990 
+03:29:48.694 [36mvite v7.3.2 [32mbuilding client environment for production...[36m[39m
+03:29:48.765 transforming...
+03:29:49.592 [33msrc/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.[39m
+03:29:50.549 [33msrc/components/ui/select.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.[39m
+03:29:51.076 [33msrc/components/ui/dropdown-menu.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.[39m
+03:29:51.831 [33msrc/components/ui/label.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.[39m
+03:29:55.354 [32m✓[39m 2760 modules transformed.
+03:29:55.916 rendering chunks...
+03:29:56.240 computing gzip size...
+03:29:56.303 [2mdist/public/[22m[32mindex.html                 [39m[1m[2m  0.73 kB[22m[1m[22m[2m │ gzip:   0.41 kB[22m
+03:29:56.304 [2mdist/public/[22m[2massets/[22m[35mindex-B6C_8tDS.css  [39m[1m[2m196.06 kB[22m[1m[22m[2m │ gzip:  30.23 kB[22m
+03:29:56.304 [2mdist/public/[22m[2massets/[22m[36mindex-Dr9JvVQ2.js   [39m[1m[33m787.54 kB[39m[22m[2m │ gzip: 227.33 kB[22m[2m │ map: 3,737.69 kB[22m
+03:29:56.304 [33m
+03:29:56.304 (!) Some chunks are larger than 500 kB after minification. Consider:
+03:29:56.304 - Using dynamic import() to code-split the application
+03:29:56.304 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+03:29:56.304 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+03:29:56.305 [32m✓ built in 7.58s[39m
+03:29:56.707 [build-vercel-output] API health check failed.
+03:29:56.708   URL: https://noted-api-server.vercel.app/api/healthz
+03:29:56.708   HTTP status: 500 Internal Server Error
+03:29:56.708   Set SKIP_API_HEALTH_CHECK=1 to bypass for offline/local builds.
+03:29:56.726  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/layerstack@0.0.0 build: `vite build --config vite.config.ts && node scripts/build-vercel-output.mjs`
+03:29:56.726 Exit status 1
+03:29:56.743 Error: Command "pnpm --filter @workspace/layerstack run build" exited with 1
