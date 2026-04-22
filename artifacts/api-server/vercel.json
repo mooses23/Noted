@@ -5,7 +5,7 @@
   "outputDirectory": ".",
   "installCommand": "pnpm install --frozen-lockfile",
   "functions": {
-    "api/[...all].mts": {
+    "api/[...all].mjs": {
       "runtime": "@vercel/node@5.1.0",
       "maxDuration": 30,
       "includeFiles": "dist/**"
