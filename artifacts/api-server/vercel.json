@@ -1,13 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "echo 'No build step: api/[...all].ts is compiled by @vercel/node'",
+  "buildCommand": "node ./build-vercel.mjs",
   "outputDirectory": ".",
   "installCommand": "pnpm install --frozen-lockfile",
   "functions": {
     "api/[...all].ts": {
       "runtime": "@vercel/node@5.1.0",
-      "maxDuration": 30
+      "maxDuration": 30,
+      "includeFiles": "dist/**"
     }
   }
 }
