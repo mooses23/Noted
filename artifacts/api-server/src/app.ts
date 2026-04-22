@@ -40,10 +40,45 @@ app.use(
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 const isProduction = process.env.NODE_ENV === "production";
-const corsAllowlist = (process.env.ALLOWED_ORIGINS ?? "")
+const rawAllowedOrigins = (process.env.ALLOWED_ORIGINS ?? "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
+
+const invalidOrigins: string[] = [];
+const corsAllowlist: string[] = [];
+for (const entry of rawAllowedOrigins) {
+  try {
+    const url = new URL(entry);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      invalidOrigins.push(entry);
+      continue;
+    }
+    corsAllowlist.push(entry);
+  } catch {
+    invalidOrigins.push(entry);
+  }
+}
+
+if (isProduction) {
+  if (rawAllowedOrigins.length === 0) {
+    logger.error(
+      "*** CORS MISCONFIGURATION: ALLOWED_ORIGINS is missing or empty in production. " +
+        "All browser requests will be rejected. Set ALLOWED_ORIGINS to a comma-separated " +
+        "list of allowed origins (e.g. https://example.com,https://app.example.com). ***",
+    );
+  }
+  if (invalidOrigins.length > 0) {
+    logger.error(
+      { invalidOrigins },
+      `*** CORS MISCONFIGURATION: ALLOWED_ORIGINS contains ${invalidOrigins.length} ` +
+        `invalid entr${invalidOrigins.length === 1 ? "y" : "ies"}: ` +
+        `${invalidOrigins.map((v) => JSON.stringify(v)).join(", ")}. ` +
+        "Each entry must be a full URL with an http:// or https:// scheme. ***",
+    );
+  }
+}
+
 // Replit dev-domain fallback only applies outside production. In production
 // the allowlist is driven entirely by ALLOWED_ORIGINS.
 if (!isProduction) {
