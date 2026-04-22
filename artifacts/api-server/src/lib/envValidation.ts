@@ -91,6 +91,79 @@ const PRODUCTION_RULES: readonly EnvRule[] = [
       return null;
     },
   },
+  {
+    name: "CLERK_PUBLISHABLE_KEY",
+    validate: (v) => {
+      const empty = requireNonEmpty(v);
+      if (empty) return empty;
+      // Clerk publishable keys are prefixed `pk_live_` or `pk_test_`. Reject
+      // obviously wrong values (e.g. secret keys pasted by mistake).
+      if (!/^pk_(live|test)_/.test(v as string)) {
+        return 'must start with "pk_live_" or "pk_test_" (looks like the wrong key was supplied)';
+      }
+      return null;
+    },
+  },
+  {
+    name: "GOOGLE_APPLICATION_CREDENTIALS_JSON",
+    validate: (v) => {
+      const empty = requireNonEmpty(v);
+      if (empty) return empty;
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(v as string);
+      } catch {
+        return "is not valid JSON (must be the full service-account JSON key)";
+      }
+      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return "must be a JSON object (the full service-account JSON key)";
+      }
+      const obj = parsed as Record<string, unknown>;
+      const missing = ["client_email", "private_key"].filter(
+        (k) => typeof obj[k] !== "string" || (obj[k] as string).trim() === "",
+      );
+      if (missing.length > 0) {
+        return `is missing required service-account field${missing.length === 1 ? "" : "s"}: ${missing.join(", ")}`;
+      }
+      return null;
+    },
+  },
+  {
+    name: "PUBLIC_OBJECT_SEARCH_PATHS",
+    validate: (v) => {
+      const empty = requireNonEmpty(v);
+      if (empty) return empty;
+      const entries = (v as string)
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (entries.length === 0) {
+        return "must contain at least one /<bucket>/<prefix> entry";
+      }
+      const bad = entries.filter((e) => !e.startsWith("/") || e.length < 2);
+      if (bad.length > 0) {
+        return `contains ${bad.length} invalid entr${bad.length === 1 ? "y" : "ies"}: ${bad
+          .map((b) => JSON.stringify(b))
+          .join(", ")} (each entry must start with "/" — e.g. "/your-bucket/public")`;
+      }
+      return null;
+    },
+  },
+  {
+    name: "PRIVATE_OBJECT_DIR",
+    validate: (v) => {
+      const empty = requireNonEmpty(v);
+      if (empty) return empty;
+      const trimmed = (v as string).trim();
+      if (!trimmed.startsWith("/") || trimmed.length < 2) {
+        return 'must be a single "/<bucket>/<prefix>" path (e.g. "/your-bucket/private")';
+      }
+      if (trimmed.includes(",")) {
+        return "must be a single path, not a comma-separated list (use PUBLIC_OBJECT_SEARCH_PATHS for multiple)";
+      }
+      return null;
+    },
+  },
 ];
 
 export function collectProductionEnvProblems(

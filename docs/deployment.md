@@ -44,10 +44,14 @@ well-formed.
 
 | Variable            | Format / example                                                                           | Purpose                                                                 |
 | ------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| `DATABASE_URL`      | `postgres://` or `postgresql://` URL — Supabase transaction pooler (port 6543)             | Postgres connection. See §1 for how to construct it.                    |
-| `CLERK_SECRET_KEY`  | Starts with `sk_live_` or `sk_test_` (publishable keys are rejected)                       | Server-side Clerk auth — verifies session tokens on every API request.  |
-| `ALLOWED_ORIGINS`   | Comma-separated full `http(s)://…` origins, e.g. `https://layerstack-web.vercel.app`       | CORS allowlist for browser calls with credentials. At least one entry.  |
-| `SENTRY_DSN`        | `https://<key>@<org>.ingest.sentry.io/<project>`                                           | Backend error + performance reporting. Required for production deploys. |
+| `DATABASE_URL`                        | `postgres://` or `postgresql://` URL — Supabase transaction pooler (port 6543)             | Postgres connection. See §1 for how to construct it.                    |
+| `CLERK_SECRET_KEY`                    | Starts with `sk_live_` or `sk_test_` (publishable keys are rejected)                       | Server-side Clerk auth — verifies session tokens on every API request.  |
+| `CLERK_PUBLISHABLE_KEY`               | Starts with `pk_live_` or `pk_test_` (secret keys are rejected)                            | Used by the Clerk SDK on the server side for token issuer verification. |
+| `ALLOWED_ORIGINS`                     | Comma-separated full `http(s)://…` origins, e.g. `https://layerstack-web.vercel.app`       | CORS allowlist for browser calls with credentials. At least one entry.  |
+| `SENTRY_DSN`                          | `https://<key>@<org>.ingest.sentry.io/<project>`                                           | Backend error + performance reporting. Required for production deploys. |
+| `GOOGLE_APPLICATION_CREDENTIALS_JSON` | Full service-account JSON object (must parse and contain `client_email` + `private_key`)   | GCS authentication. See **Object storage setup** below.                 |
+| `PUBLIC_OBJECT_SEARCH_PATHS`          | Comma-separated `/<bucket>/<prefix>` (each entry must start with `/`)                      | Where public assets are read from.                                      |
+| `PRIVATE_OBJECT_DIR`                  | Single `/<bucket>/<prefix>` (must start with `/`, not comma-separated)                     | Where private uploads go.                                               |
 
 Plus these, which the validator does not enforce but the app needs to
 function correctly in production:
@@ -55,11 +59,7 @@ function correctly in production:
 | Variable                              | Format                                                  | Purpose                                                                    |
 | ------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------- |
 | `NODE_ENV`                            | `production`                                            | Enables prod code paths (incl. the env validator above).                   |
-| `CLERK_PUBLISHABLE_KEY`               | `pk_live_…` / `pk_test_…`                               | Used by the Clerk SDK on the server side for token issuer verification.    |
 | `LAYERSTACK_ADMIN_EMAILS`             | Comma-separated emails (empty = no admins)              | Admin allowlist.                                                           |
-| `GOOGLE_APPLICATION_CREDENTIALS_JSON` | Full service-account JSON, single value                 | GCS authentication. See **Object storage setup** below.                    |
-| `PUBLIC_OBJECT_SEARCH_PATHS`          | Comma-separated `/<bucket>/<prefix>`                    | Where public assets are read from.                                         |
-| `PRIVATE_OBJECT_DIR`                  | Single `/<bucket>/<prefix>`                             | Where private uploads go.                                                  |
 
 ### Optional tuning vars on the API project
 
