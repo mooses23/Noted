@@ -494,6 +494,7 @@ router.post("/versions/preview-mix", async (req: Request, res: Response) => {
     const { buffer, sizeBytes } = await mixLayeredAudio({
       baseObjectPath: baseVersion.officialMixUrl,
       commitObjectPaths: commits.map((c) => c.audioFileUrl),
+      commitOffsetsSeconds: commits.map((c) => c.overlayOffsetSeconds ?? 0),
     });
     const objectPath = await uploadAutoMix(b.songId, buffer);
 
