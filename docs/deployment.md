@@ -23,6 +23,95 @@ deployments automatically point at the matching API preview deployment.
 
 ---
 
+## Production environment variables (canonical checklist)
+
+This is the single source of truth for what the API and web projects read
+from the environment in production. The required list mirrors
+`artifacts/api-server/src/lib/envValidation.ts` exactly — at startup the
+API runs that validator and **exits non-zero with a single `*** ENV
+MISCONFIGURATION ***` error log naming every offending variable** if
+anything in the "Required" table below is missing or malformed. The deploy
+fails loudly rather than booting into a broken state.
+
+If you're preparing a new deploy, work through these tables top-to-bottom;
+once both projects' Required rows are filled in, the rest are tuning knobs
+you can leave at their defaults.
+
+### Required on the API project (`layerstack-api`)
+
+Startup will refuse to come up unless every one of these is set and
+well-formed.
+
+| Variable            | Format / example                                                                           | Purpose                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `DATABASE_URL`      | `postgres://` or `postgresql://` URL — Supabase transaction pooler (port 6543)             | Postgres connection. See §1 for how to construct it.                    |
+| `CLERK_SECRET_KEY`  | Starts with `sk_live_` or `sk_test_` (publishable keys are rejected)                       | Server-side Clerk auth — verifies session tokens on every API request.  |
+| `ALLOWED_ORIGINS`   | Comma-separated full `http(s)://…` origins, e.g. `https://layerstack-web.vercel.app`       | CORS allowlist for browser calls with credentials. At least one entry.  |
+| `SENTRY_DSN`        | `https://<key>@<org>.ingest.sentry.io/<project>`                                           | Backend error + performance reporting. Required for production deploys. |
+
+Plus these, which the validator does not enforce but the app needs to
+function correctly in production:
+
+| Variable                              | Format                                                  | Purpose                                                                    |
+| ------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `NODE_ENV`                            | `production`                                            | Enables prod code paths (incl. the env validator above).                   |
+| `CLERK_PUBLISHABLE_KEY`               | `pk_live_…` / `pk_test_…`                               | Used by the Clerk SDK on the server side for token issuer verification.    |
+| `LAYERSTACK_ADMIN_EMAILS`             | Comma-separated emails (empty = no admins)              | Admin allowlist.                                                           |
+| `GOOGLE_APPLICATION_CREDENTIALS_JSON` | Full service-account JSON, single value                 | GCS authentication. See **Object storage setup** below.                    |
+| `PUBLIC_OBJECT_SEARCH_PATHS`          | Comma-separated `/<bucket>/<prefix>`                    | Where public assets are read from.                                         |
+| `PRIVATE_OBJECT_DIR`                  | Single `/<bucket>/<prefix>`                             | Where private uploads go.                                                  |
+
+### Optional tuning vars on the API project
+
+All of these have safe defaults — set them only when you have a reason.
+
+| Variable                       | Default                                       | Effect                                                                                 |
+| ------------------------------ | --------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `LOG_LEVEL`                    | `info`                                        | pino log verbosity (`trace`/`debug`/`info`/`warn`/`error`).                            |
+| `APP_BASE_URL`                 | `REPLIT_DEV_DOMAIN` in dev, otherwise unset   | Absolute base URL used to build links in outbound digest emails.                       |
+| `PGPOOL_MAX`                   | `1`                                           | Max pg connections per serverless instance.                                            |
+| `PGPOOL_IDLE_TIMEOUT_MS`       | `10000`                                       | Idle-connection eviction timeout for the pg pool.                                      |
+| `PGSSL_REJECT_UNAUTHORIZED`    | `true`                                        | **Do not disable for Supabase.** Only for self-hosted Postgres with a private CA.      |
+| `GCS_PROJECT_ID`               | `project_id` from the service-account JSON    | Override the GCP project ID used for GCS calls.                                        |
+| `FFMPEG_PATH`                  | `ffmpeg` on `$PATH`                           | Absolute path to the ffmpeg binary used for the auto-mix preview.                      |
+| `SENTRY_ENVIRONMENT`           | `VERCEL_ENV` → `NODE_ENV` → `development`     | Sentry environment tag.                                                                |
+| `SENTRY_RELEASE`               | `VERCEL_GIT_COMMIT_SHA`                       | Sentry release tag.                                                                    |
+| `SENTRY_TRACES_SAMPLE_RATE`    | `0.1` (when `SENTRY_DSN` set)                 | Fraction of requests sampled as performance transactions, `0..1`. See §8.6.            |
+| `RESEND_API_KEY`               | unset (digest sending disabled)               | Enables the Resend client used to send the contributor digest email.                   |
+| `DIGEST_FROM_EMAIL`            | `Noted <notifications@noted.app>`             | `From:` address on digest emails.                                                      |
+| `CRON_SECRET`                  | unset                                         | Shared secret required on the digest cron endpoint (`/api/me/...`) when set.           |
+
+### Required on the web project (`layerstack-web`)
+
+| Variable                     | Format                          | Purpose                                                                                 |
+| ---------------------------- | ------------------------------- | --------------------------------------------------------------------------------------- |
+| `NODE_ENV`                   | `production`                    | Enables prod build settings.                                                            |
+| `VITE_CLERK_PUBLISHABLE_KEY` | `pk_live_…` / `pk_test_…`       | Browser-side Clerk SDK init. Must match the same Clerk instance as `CLERK_SECRET_KEY`.  |
+| `API_REWRITE_TARGET`         | Full origin, e.g. `https://layerstack-api.vercel.app` | Build-time rewrite target for `/api/*`. Build fails loudly if unset (see §4.7).         |
+
+### Optional on the web project
+
+| Variable                          | Default                            | Effect                                                                            |
+| --------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------- |
+| `VITE_SENTRY_DSN`                 | unset (frontend Sentry disabled)   | Enables browser error + performance reporting.                                    |
+| `VITE_SENTRY_ENVIRONMENT`         | `VERCEL_ENV`                       | Sentry environment tag for browser events.                                        |
+| `VITE_SENTRY_RELEASE`             | `VERCEL_GIT_COMMIT_SHA`            | Sentry release tag for browser events.                                            |
+| `VITE_SENTRY_TRACES_SAMPLE_RATE`  | `0.1` (when `VITE_SENTRY_DSN` set) | Fraction of sessions sampled for performance. See §8.6.                           |
+| `SENTRY_AUTH_TOKEN`               | unset                              | Source-map upload token — when set with `SENTRY_ORG` + `SENTRY_PROJECT`, the build uploads source maps. |
+| `SENTRY_ORG`                      | unset                              | Sentry org slug for source-map upload.                                            |
+| `SENTRY_PROJECT`                  | `layerstack-web`                   | Sentry project slug for source-map upload.                                        |
+| `API_HEALTH_CHECK_TIMEOUT_MS`     | `10000`                            | Timeout for the post-build `/api/healthz` smoke check (§4.7).                     |
+| `SKIP_API_HEALTH_CHECK`           | unset                              | Set to `1` to skip the post-build smoke check (offline / not-yet-deployed API).   |
+
+> The API project's per-environment `.env.production.example`
+> (`artifacts/api-server/.env.production.example`) and the web project's
+> equivalent (`artifacts/layerstack/.env.production.example`) contain the
+> same variables annotated inline — copy them into Vercel's env-var UI
+> when first wiring up a project. This doc is the human-readable index;
+> those files are the copy-paste source.
+
+---
+
 ## 1. Create the Supabase project
 
 1. Go to <https://supabase.com/dashboard> → **New project**.
