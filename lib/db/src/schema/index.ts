@@ -409,6 +409,7 @@ export const notificationsTable = pgTable(
       onDelete: "cascade",
     }),
     readAt: timestamp("read_at", { withTimezone: true }),
+    emailedAt: timestamp("emailed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -416,6 +417,7 @@ export const notificationsTable = pgTable(
   (t) => [
     index("notifications_user_idx").on(t.userId),
     index("notifications_user_unread_idx").on(t.userId, t.readAt),
+    index("notifications_unread_unemailed_idx").on(t.readAt, t.emailedAt),
   ],
 );
 

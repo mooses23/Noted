@@ -29,7 +29,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 The unread-notifications digest job lives at `POST /internal/digest/run`.
 - Auth: requires `x-cron-secret` header matching `CRON_SECRET` env var.
 - Sender: `lib/email.ts` posts to Resend's REST API when `RESEND_API_KEY` is set; otherwise it logs the email and still advances the watermark so dev runs converge.
-- Per-user opt-out lives on `profiles.unread_digest_opt_out`; deduping uses `profiles.last_digest_emailed_at`.
+- Per-user opt-out lives on `profiles.unread_digest_opt_out`. Per-row deduping uses `notifications.emailed_at` (set when a notification is included in a digest); `profiles.last_digest_emailed_at` is kept up to date as an informational "last sent" timestamp but is no longer used to filter the digest. Marking a notification read in-app does not affect `emailed_at`, and being included in a digest does not affect `read_at`.
 - The Resend Replit connector was offered to the user and dismissed — set `RESEND_API_KEY` and `DIGEST_FROM_EMAIL` directly as secrets when ready to go live.
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
