@@ -16,6 +16,7 @@ import { requireAuth } from "../lib/auth";
 import { fetchCommitById } from "../lib/commitQueries";
 import { toCommitSummary, toRound, toSong } from "../lib/shapes";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { logger } from "../lib/logger";
 
 const MAX_COMMIT_AUDIO_BYTES = 60 * 1024 * 1024; // 60MB
 const ALLOWED_COMMIT_AUDIO_PREFIXES = ["audio/"];
@@ -250,13 +251,13 @@ router.patch(
     }
 
     // Only re-validate audio when the user is actually replacing it.
-    if (
+    const audioIsBeingReplaced =
       body.audioObjectPath !== undefined &&
-      body.audioObjectPath !== existing.audioFileUrl
-    ) {
+      body.audioObjectPath !== existing.audioFileUrl;
+    if (audioIsBeingReplaced) {
       const audioErr = await validateAudioObjectPath(
         existing.songId,
-        body.audioObjectPath,
+        body.audioObjectPath!,
       );
       if (audioErr) {
         res.status(400).json({ error: audioErr });
@@ -301,6 +302,33 @@ router.patch(
       })
       .where(eq(commitDraftsTable.id, draftId))
       .returning();
+
+    // Best-effort cleanup of the previous audio object once the swap has
+    // been persisted. Failures are logged but never block the response.
+    const oldDraftPrefix = `/objects/songs/${existing.songId}/drafts/commits/`;
+    if (
+      audioIsBeingReplaced &&
+      existing.audioFileUrl &&
+      existing.audioFileUrl.startsWith(oldDraftPrefix)
+    ) {
+      const oldPath = existing.audioFileUrl;
+      void objectStorage
+        .deleteObjectEntity(oldPath)
+        .then((deleted) => {
+          if (!deleted) {
+            logger.info(
+              { draftId, oldPath },
+              "Old draft audio object already gone; nothing to delete.",
+            );
+          }
+        })
+        .catch((err) => {
+          logger.warn(
+            { err, draftId, oldPath },
+            "Failed to delete replaced draft audio object.",
+          );
+        });
+    }
 
     const [song] = await db
       .select()

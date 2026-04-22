@@ -187,6 +187,30 @@ export class ObjectStorageService {
     });
   }
 
+  async deleteObjectEntity(objectPath: string): Promise<boolean> {
+    if (!objectPath.startsWith("/objects/")) {
+      throw new ObjectNotFoundError();
+    }
+    const parts = objectPath.slice(1).split("/");
+    if (parts.length < 2) {
+      throw new ObjectNotFoundError();
+    }
+    const entityId = parts.slice(1).join("/");
+    let entityDir = this.getPrivateObjectDir();
+    if (!entityDir.endsWith("/")) {
+      entityDir = `${entityDir}/`;
+    }
+    const objectEntityPath = `${entityDir}${entityId}`;
+    const { bucketName, objectName } = parseObjectPath(objectEntityPath);
+    const objectFile = objectStorageClient.bucket(bucketName).file(objectName);
+    const [exists] = await objectFile.exists();
+    if (!exists) {
+      return false;
+    }
+    await objectFile.delete();
+    return true;
+  }
+
   async getObjectEntityFile(objectPath: string): Promise<File> {
     if (!objectPath.startsWith("/objects/")) {
       throw new ObjectNotFoundError();
