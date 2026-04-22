@@ -1,5 +1,5 @@
 // MUST be the first import. Validates required production env vars at
-// module load and exits non-zero on misconfiguration before any other
+// module load and throws on misconfiguration before any other
 // module (notably `@workspace/db`, which throws on missing DATABASE_URL)
 // is evaluated. See ./lib/envValidation.ts for details.
 import "./lib/envValidation";

@@ -92,19 +92,6 @@ const PRODUCTION_RULES: readonly EnvRule[] = [
     },
   },
   {
-    name: "CLERK_PUBLISHABLE_KEY",
-    validate: (v) => {
-      const empty = requireNonEmpty(v);
-      if (empty) return empty;
-      // Clerk publishable keys are prefixed `pk_live_` or `pk_test_`. Reject
-      // obviously wrong values (e.g. secret keys pasted by mistake).
-      if (!/^pk_(live|test)_/.test(v as string)) {
-        return 'must start with "pk_live_" or "pk_test_" (looks like the wrong key was supplied)';
-      }
-      return null;
-    },
-  },
-  {
     name: "GOOGLE_APPLICATION_CREDENTIALS_JSON",
     validate: (v) => {
       const empty = requireNonEmpty(v);
@@ -180,15 +167,23 @@ export function collectProductionEnvProblems(
 
 /**
  * Run the production env-var checks. In production, any problem causes a
- * single prominent error log naming every offending variable and the
- * process exits non-zero so the deploy fails loudly. In non-production
+ * single prominent error log naming every offending variable and then
+ * throws so module initialization fails loudly. In non-production
  * environments this is a no-op.
  *
- * Pass `exit` to override `process.exit` (used by tests).
+ * We deliberately throw instead of calling process.exit() because in
+ * serverless runtimes (Vercel, Lambda) process.exit() during cold start
+ * tears down the worker before any logs can flush — the operator sees
+ * only an opaque FUNCTION_INVOCATION_FAILED. A thrown error during
+ * module init is captured by the runtime and surfaced in the function
+ * logs alongside our pino error above.
+ *
+ * Pass `onFail` to override the failure mode (used by tests so they
+ * don't have to catch a thrown error).
  */
 export function validateProductionEnv(options?: {
   env?: NodeJS.ProcessEnv;
-  exit?: (code: number) => never;
+  onFail?: (problems: EnvProblem[]) => void;
 }): void {
   const env = options?.env ?? process.env;
   if (env.NODE_ENV !== "production") return;
@@ -197,16 +192,18 @@ export function validateProductionEnv(options?: {
   if (problems.length === 0) return;
 
   const summary = problems.map((p) => `  - ${p.name}: ${p.reason}`).join("\n");
-  logger.error(
-    { problems },
+  const message =
     "*** ENV MISCONFIGURATION: " +
-      `${problems.length} required production environment variable${problems.length === 1 ? " is" : "s are"} ` +
-      "missing or malformed. The API cannot start safely. Fix the following " +
-      `and redeploy:\n${summary} ***`,
-  );
+    `${problems.length} required production environment variable${problems.length === 1 ? " is" : "s are"} ` +
+    "missing or malformed. The API cannot start safely. Fix the following " +
+    `and redeploy:\n${summary} ***`;
+  logger.error({ problems }, message);
 
-  const exit = options?.exit ?? ((code: number) => process.exit(code));
-  exit(1);
+  if (options?.onFail) {
+    options.onFail(problems);
+    return;
+  }
+  throw new Error(message);
 }
 
 // Run as a module-load side effect so that simply importing this file from

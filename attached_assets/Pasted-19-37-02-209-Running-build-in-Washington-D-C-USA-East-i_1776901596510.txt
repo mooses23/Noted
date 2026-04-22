@@ -1,0 +1,48 @@
+19:37:02.209 Running build in Washington, D.C., USA (East) – iad1
+19:37:02.210 Build machine configuration: 2 cores, 8 GB
+19:37:02.334 Cloning github.com/mooses23/Noted (Branch: Main, Commit: 92f3739)
+19:37:04.360 Cloning completed: 2.026s
+19:37:04.584 Restored build cache from previous deployment (BzbLSRvbwrLmMVQCh5539GbWDMCZ)
+19:37:04.887 Running "vercel build"
+19:37:05.562 Vercel CLI 51.6.1
+19:37:05.686 Detected OpenTelemetry dependency: @opentelemetry/api@1.9.1, which meets the minimum version requirement of 1.7.0
+19:37:06.576 > Detected ENABLE_EXPERIMENTAL_COREPACK=1 and "pnpm@10.26.1" in package.json
+19:37:06.912 Running "install" command: `pnpm install --frozen-lockfile`...
+19:37:06.998 ! Corepack is about to download https://registry.npmjs.org/pnpm/-/pnpm-10.26.1.tgz
+19:37:08.278 Scope: all 11 workspace projects
+19:37:09.825 
+19:37:09.869 ../.. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+19:37:09.882 ../.. preinstall: Done
+19:37:10.006 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+19:37:10.006 │                                                                              │
+19:37:10.007 │   Ignored build scripts: @clerk/shared@4.8.2, @sentry/cli@2.58.5.            │
+19:37:10.007 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+19:37:10.007 │   to run scripts.                                                            │
+19:37:10.007 │                                                                              │
+19:37:10.007 ╰──────────────────────────────────────────────────────────────────────────────╯
+19:37:10.012 Done in 2.1s using pnpm v10.26.1
+19:37:10.924 
+19:37:10.926   dist/handler.mjs      2.4mb ⚠️
+19:37:10.927   dist/handler.mjs.map  4.4mb
+19:37:10.927 
+19:37:10.927 ⚡ Done in 560ms
+19:37:11.094 Installing dependencies...
+19:37:11.463 Scope: all 11 workspace projects
+19:37:12.887 
+19:37:12.999 ../.. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+19:37:13.013 ../.. preinstall: Done
+19:37:13.138 ╭ Warning ─────────────────────────────────────────────────────────────────────╮
+19:37:13.144 │                                                                              │
+19:37:13.144 │   Ignored build scripts: @clerk/shared@4.8.2, @sentry/cli@2.58.5.            │
+19:37:13.144 │   Run "pnpm approve-builds" to pick which dependencies should be allowed     │
+19:37:13.144 │   to run scripts.                                                            │
+19:37:13.144 │                                                                              │
+19:37:13.144 ╰──────────────────────────────────────────────────────────────────────────────╯
+19:37:13.179 Done in 1.9s using pnpm v10.26.1
+19:37:19.610 Build Completed in /vercel/output [13s]
+19:37:20.027 Deploying outputs...
+19:37:25.804 Deployment completed
+19:37:25.917 Creating build cache...
+19:38:20.145 Created build cache: 54s
+19:38:20.145 Uploading build cache [133.28 MB]
+19:38:21.925 Build cache uploaded: 1.780s

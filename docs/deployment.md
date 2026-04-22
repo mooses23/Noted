@@ -28,10 +28,11 @@ deployments automatically point at the matching API preview deployment.
 This is the single source of truth for what the API and web projects read
 from the environment in production. The required list mirrors
 `artifacts/api-server/src/lib/envValidation.ts` exactly — at startup the
-API runs that validator and **exits non-zero with a single `*** ENV
+API runs that validator and **throws at module init with a single `*** ENV
 MISCONFIGURATION ***` error log naming every offending variable** if
-anything in the "Required" table below is missing or malformed. The deploy
-fails loudly rather than booting into a broken state.
+anything in the "Required" table below is missing or malformed. On Vercel
+this surfaces in the function logs and the deploy fails loudly rather
+than booting into a broken state.
 
 If you're preparing a new deploy, work through these tables top-to-bottom;
 once both projects' Required rows are filled in, the rest are tuning knobs
@@ -46,7 +47,6 @@ well-formed.
 | ------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
 | `DATABASE_URL`                        | `postgres://` or `postgresql://` URL — Supabase transaction pooler (port 6543)             | Postgres connection. See §1 for how to construct it.                    |
 | `CLERK_SECRET_KEY`                    | Starts with `sk_live_` or `sk_test_` (publishable keys are rejected)                       | Server-side Clerk auth — verifies session tokens on every API request.  |
-| `CLERK_PUBLISHABLE_KEY`               | Starts with `pk_live_` or `pk_test_` (secret keys are rejected)                            | Used by the Clerk SDK on the server side for token issuer verification. |
 | `ALLOWED_ORIGINS`                     | Comma-separated full `http(s)://…` origins, e.g. `https://layerstack-web.vercel.app`       | CORS allowlist for browser calls with credentials. At least one entry.  |
 | `SENTRY_DSN`                          | `https://<key>@<org>.ingest.sentry.io/<project>`                                           | Backend error + performance reporting. Required for production deploys. |
 | `GOOGLE_APPLICATION_CREDENTIALS_JSON` | Full service-account JSON object (must parse and contain `client_email` + `private_key`)   | GCS authentication. See **Object storage setup** below.                 |
@@ -172,7 +172,8 @@ the schema. To force a destructive push (only on a database you own), use
    - `DATABASE_URL` (from step 1)
    - `ALLOWED_ORIGINS` — set to the eventual web URL once you create it in
      step 4 (you can come back and edit this).
-   - `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY` (Clerk dashboard → API Keys)
+   - `CLERK_SECRET_KEY` (Clerk dashboard → API Keys). The publishable key
+     belongs on the web project, not here — see step 4.
    - `LAYERSTACK_ADMIN_EMAILS` — comma-separated admin email allowlist.
    - Object storage (see **Object storage setup** below):
      - `GOOGLE_APPLICATION_CREDENTIALS_JSON` — full service-account JSON.

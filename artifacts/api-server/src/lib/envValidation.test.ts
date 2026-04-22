@@ -30,7 +30,6 @@ const FULLY_VALID: NodeJS.ProcessEnv = {
   NODE_ENV: "production",
   DATABASE_URL: "postgres://u:p@h:6543/db",
   CLERK_SECRET_KEY: "sk_test_abc",
-  CLERK_PUBLISHABLE_KEY: "pk_test_abc",
   ALLOWED_ORIGINS: "https://example.com",
   SENTRY_DSN: "https://abc@o1.ingest.sentry.io/1",
   GOOGLE_APPLICATION_CREDENTIALS_JSON: validSaJson,
@@ -43,28 +42,6 @@ check(
   "no problems when every required var is present and well-formed",
   collectProductionEnvProblems(FULLY_VALID).length === 0,
 );
-
-console.log("CLERK_PUBLISHABLE_KEY rule");
-{
-  const probs = collectProductionEnvProblems({
-    ...FULLY_VALID,
-    CLERK_PUBLISHABLE_KEY: "",
-  });
-  check(
-    "missing → flagged",
-    probs.some((p) => p.name === "CLERK_PUBLISHABLE_KEY" && /missing/.test(p.reason)),
-  );
-}
-{
-  const probs = collectProductionEnvProblems({
-    ...FULLY_VALID,
-    CLERK_PUBLISHABLE_KEY: "sk_test_oops",
-  });
-  check(
-    "secret-key value rejected",
-    probs.some((p) => p.name === "CLERK_PUBLISHABLE_KEY" && /pk_live_|pk_test_/.test(p.reason)),
-  );
-}
 
 console.log("GOOGLE_APPLICATION_CREDENTIALS_JSON rule");
 {
@@ -187,39 +164,65 @@ console.log("PRIVATE_OBJECT_DIR rule");
   );
 }
 
-console.log("validateProductionEnv — exit behaviour");
+console.log("CLERK_PUBLISHABLE_KEY is NOT validated by api-server");
 {
-  let exited: number | null = null;
-  validateProductionEnv({
-    env: { ...FULLY_VALID, CLERK_PUBLISHABLE_KEY: "" },
-    exit: ((code: number) => {
-      exited = code;
-      return undefined as never;
-    }),
+  // The api-server doesn't read CLERK_PUBLISHABLE_KEY anywhere; the frontend
+  // owns that var. Validating it here would crash deploys whose API project
+  // doesn't have it set (which is the correct configuration).
+  const probs = collectProductionEnvProblems({
+    ...FULLY_VALID,
+    CLERK_PUBLISHABLE_KEY: undefined,
   });
-  check("exits non-zero when a new rule fails", exited === 1);
+  check(
+    "absent CLERK_PUBLISHABLE_KEY does not produce a problem",
+    !probs.some((p) => p.name === "CLERK_PUBLISHABLE_KEY"),
+  );
+}
+
+console.log("validateProductionEnv — failure behaviour");
+{
+  let captured: { name: string; reason: string }[] | null = null;
+  validateProductionEnv({
+    env: { ...FULLY_VALID, GOOGLE_APPLICATION_CREDENTIALS_JSON: "" },
+    onFail: (problems) => {
+      captured = problems;
+    },
+  });
+  check(
+    "calls onFail with problems when a rule fails",
+    captured !== null && captured!.length > 0,
+  );
 }
 {
-  let exited: number | null = null;
+  let threw = false;
+  try {
+    validateProductionEnv({
+      env: { ...FULLY_VALID, GOOGLE_APPLICATION_CREDENTIALS_JSON: "" },
+    });
+  } catch {
+    threw = true;
+  }
+  check("throws (does not call process.exit) on failure when no onFail given", threw);
+}
+{
+  let called = false;
   validateProductionEnv({
     env: FULLY_VALID,
-    exit: ((code: number) => {
-      exited = code;
-      return undefined as never;
-    }),
+    onFail: () => {
+      called = true;
+    },
   });
-  check("does not exit when every required var is valid", exited === null);
+  check("does not call onFail when every required var is valid", called === false);
 }
 {
-  let exited: number | null = null;
+  let called = false;
   validateProductionEnv({
-    env: { ...FULLY_VALID, NODE_ENV: "development", CLERK_PUBLISHABLE_KEY: "" },
-    exit: ((code: number) => {
-      exited = code;
-      return undefined as never;
-    }),
+    env: { ...FULLY_VALID, NODE_ENV: "development", GOOGLE_APPLICATION_CREDENTIALS_JSON: "" },
+    onFail: () => {
+      called = true;
+    },
   });
-  check("no-op outside production", exited === null);
+  check("no-op outside production", called === false);
 }
 
 if (failed > 0) {
