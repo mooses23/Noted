@@ -85,6 +85,9 @@ async function buildSongDetail(song: typeof songsTable.$inferSelect) {
   const currentVersion = song.currentVersionId
     ? versions.find((v) => v.id === song.currentVersionId) ?? null
     : versions.find((v) => v.isCurrent) ?? versions[0] ?? null;
+  const baseVersion = currentRound?.baseVersionId
+    ? versions.find((v) => v.id === currentRound.baseVersionId) ?? null
+    : null;
 
   const stems = files.filter((f) => f.fileType === "stem");
 
@@ -99,6 +102,7 @@ async function buildSongDetail(song: typeof songsTable.$inferSelect) {
     ...toSong(song),
     currentRound: currentRound ? toRound(currentRound) : null,
     currentVersion: currentVersion ? toVersion(currentVersion) : null,
+    baseVersion: baseVersion ? toVersion(baseVersion) : null,
     stems: stems.map(toSongFile),
     thirdPartyCredits: credits.map(toSongCredit),
     totalCommits: commitStats[0]?.count ?? 0,

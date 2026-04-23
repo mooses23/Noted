@@ -175,6 +175,21 @@ export const GetFeaturedSongResponse = zod.object({
             createdAt: zod.coerce.date(),
           })
           .nullable(),
+        baseVersion: zod
+          .object({
+            id: zod.string().uuid(),
+            songId: zod.string().uuid(),
+            versionNumber: zod.number(),
+            title: zod.string(),
+            description: zod.string().nullish(),
+            officialMixUrl: zod.string(),
+            isCurrent: zod.boolean(),
+            createdAt: zod.coerce.date(),
+          })
+          .nullable()
+          .describe(
+            "The version that the current round is layered against (resolved from currentRound.baseVersionId). Null when there is no open round or the round has no explicit base version.",
+          ),
         stems: zod.array(
           zod.object({
             id: zod.string().uuid(),
@@ -274,6 +289,21 @@ export const GetSongResponse = zod
           createdAt: zod.coerce.date(),
         })
         .nullable(),
+      baseVersion: zod
+        .object({
+          id: zod.string().uuid(),
+          songId: zod.string().uuid(),
+          versionNumber: zod.number(),
+          title: zod.string(),
+          description: zod.string().nullish(),
+          officialMixUrl: zod.string(),
+          isCurrent: zod.boolean(),
+          createdAt: zod.coerce.date(),
+        })
+        .nullable()
+        .describe(
+          "The version that the current round is layered against (resolved from currentRound.baseVersionId). Null when there is no open round or the round has no explicit base version.",
+        ),
       stems: zod.array(
         zod.object({
           id: zod.string().uuid(),
@@ -371,6 +401,21 @@ export const GetSongBySlugResponse = zod
           createdAt: zod.coerce.date(),
         })
         .nullable(),
+      baseVersion: zod
+        .object({
+          id: zod.string().uuid(),
+          songId: zod.string().uuid(),
+          versionNumber: zod.number(),
+          title: zod.string(),
+          description: zod.string().nullish(),
+          officialMixUrl: zod.string(),
+          isCurrent: zod.boolean(),
+          createdAt: zod.coerce.date(),
+        })
+        .nullable()
+        .describe(
+          "The version that the current round is layered against (resolved from currentRound.baseVersionId). Null when there is no open round or the round has no explicit base version.",
+        ),
       stems: zod.array(
         zod.object({
           id: zod.string().uuid(),

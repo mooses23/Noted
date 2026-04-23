@@ -161,11 +161,48 @@ export default function SongDetail() {
                   </Button>
                 </Link>
               </div>
+              {song.baseVersion ? (
+                <div className="mb-5 border border-border bg-card p-4">
+                  <div className="flex items-baseline justify-between gap-3 mb-3">
+                    <div className="text-[10px] uppercase tracking-widest text-primary">
+                      Layering on v{song.baseVersion.versionNumber} —{" "}
+                      <span className="text-foreground">
+                        {song.baseVersion.title}
+                      </span>
+                    </div>
+                    <Link
+                      href={`/songs/${song.slug}/versions`}
+                      className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-primary hover:underline flex-shrink-0"
+                    >
+                      Version history →
+                    </Link>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Record your Note over this take so curators can stack it cleanly.
+                  </p>
+                  <AudioPlayer
+                    url={song.baseVersion.officialMixUrl}
+                    title={song.baseVersion.title}
+                    artist="Base mix for this round"
+                    className="bg-background border border-border"
+                  />
+                </div>
+              ) : (
+                <div className="mb-5 border border-dashed border-border bg-card p-3 text-xs text-muted-foreground">
+                  This round isn't pinned to a specific version — layer onto the latest mix above.
+                </div>
+              )}
               <NotesList
                 roundId={song.currentRound.id}
-                baseUrl={song.currentVersion?.officialMixUrl || null}
+                baseUrl={
+                  song.baseVersion?.officialMixUrl ||
+                  song.currentVersion?.officialMixUrl ||
+                  null
+                }
                 baseLabel={
-                  song.currentVersion
+                  song.baseVersion
+                    ? `${song.title} v${song.baseVersion.versionNumber}`
+                    : song.currentVersion
                     ? `${song.title} v${song.currentVersion.versionNumber}`
                     : null
                 }

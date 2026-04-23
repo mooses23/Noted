@@ -14,6 +14,8 @@ import type { Version } from "./version";
 export type SongDetail = Song & {
   currentRound: Round | null;
   currentVersion: Version | null;
+  /** The version that the current round is layered against (resolved from currentRound.baseVersionId). Null when there is no open round or the round has no explicit base version. */
+  baseVersion: Version | null;
   stems: SongFile[];
   thirdPartyCredits: SongCredit[];
   totalCommits: number;

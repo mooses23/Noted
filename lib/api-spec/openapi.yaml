@@ -993,13 +993,17 @@ components:
       allOf:
         - $ref: "#/components/schemas/Song"
         - type: object
-          required: [currentRound, currentVersion, stems, thirdPartyCredits, totalCommits, totalVotes, versionCount, structureRoundsCompleted, accentRoundsCompleted]
+          required: [currentRound, currentVersion, baseVersion, stems, thirdPartyCredits, totalCommits, totalVotes, versionCount, structureRoundsCompleted, accentRoundsCompleted]
           properties:
             currentRound:
               nullable: true
               oneOf: [{ $ref: "#/components/schemas/Round" }]
             currentVersion:
               nullable: true
+              oneOf: [{ $ref: "#/components/schemas/Version" }]
+            baseVersion:
+              nullable: true
+              description: The version that the current round is layered against (resolved from currentRound.baseVersionId). Null when there is no open round or the round has no explicit base version.
               oneOf: [{ $ref: "#/components/schemas/Version" }]
             stems:
               type: array
