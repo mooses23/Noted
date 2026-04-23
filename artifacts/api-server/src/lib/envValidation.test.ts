@@ -202,7 +202,10 @@ console.log("validateProductionEnv — failure behaviour");
   } catch {
     threw = true;
   }
-  check("throws (does not call process.exit) on failure when no onFail given", threw);
+  check(
+    "throws (does not call process.exit) on failure when no onFail given — used by long-running entry only",
+    threw,
+  );
 }
 {
   let called = false;

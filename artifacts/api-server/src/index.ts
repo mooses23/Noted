@@ -1,8 +1,11 @@
-// MUST be the first import. Validates required production env vars at
-// module load and throws on misconfiguration before any other
-// module (notably `@workspace/db`, which throws on missing DATABASE_URL)
-// is evaluated. See ./lib/envValidation.ts for details.
-import "./lib/envValidation";
+// MUST be the first import. Collects production env problems (no throw).
+// We then explicitly call validateProductionEnv() below so the long-running
+// dev/Replit entrypoint fails fast with a thrown error — that behavior is
+// safe here because this file is NOT used by the Vercel serverless entry
+// (which goes through api/[...all].mjs → src/handler.ts). See
+// ./lib/envValidation.ts for the full rationale.
+import { validateProductionEnv } from "./lib/envValidation";
+validateProductionEnv();
 
 import app from "./app";
 import { logger } from "./lib/logger";

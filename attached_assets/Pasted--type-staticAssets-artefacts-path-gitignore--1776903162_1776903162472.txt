@@ -1,0 +1,271 @@
+[
+  {
+    "type": "staticAssets",
+    "artefacts": [
+      {
+        "path": "/.gitignore",
+        "type": "Misc",
+        "size": 29
+      },
+      {
+        "path": "/.replit-artifact/artifact.toml",
+        "type": "Misc",
+        "size": 784
+      },
+      {
+        "path": "/api/[...all].mjs",
+        "type": "JS",
+        "size": 4245
+      },
+      {
+        "path": "/build-vercel.mjs",
+        "type": "JS",
+        "size": 2368
+      },
+      {
+        "path": "/build.mjs",
+        "type": "JS",
+        "size": 3429
+      },
+      {
+        "path": "/dist/handler.mjs",
+        "type": "JS",
+        "size": 2506545
+      },
+      {
+        "path": "/dist/handler.mjs.map",
+        "type": "Misc",
+        "size": 4634065
+      },
+      {
+        "path": "/src/app.ts",
+        "type": "Media",
+        "size": 4703
+      },
+      {
+        "path": "/src/handler.ts",
+        "type": "Media",
+        "size": 651
+      },
+      {
+        "path": "/src/index.ts",
+        "type": "Media",
+        "size": 2018
+      },
+      {
+        "path": "/src/lib/.gitkeep",
+        "type": "Misc",
+        "size": 0
+      },
+      {
+        "path": "/src/lib/audioMix.ts",
+        "type": "Media",
+        "size": 9764
+      },
+      {
+        "path": "/src/lib/auth.ts",
+        "type": "Media",
+        "size": 3852
+      },
+      {
+        "path": "/src/lib/commitPreviewMix.ts",
+        "type": "Media",
+        "size": 2641
+      },
+      {
+        "path": "/src/lib/commitQueries.ts",
+        "type": "Media",
+        "size": 2607
+      },
+      {
+        "path": "/src/lib/contentFilter.ts",
+        "type": "Media",
+        "size": 2013
+      },
+      {
+        "path": "/src/lib/digest.ts",
+        "type": "Media",
+        "size": 8464
+      },
+      {
+        "path": "/src/lib/email.ts",
+        "type": "Media",
+        "size": 2414
+      },
+      {
+        "path": "/src/lib/envValidation.test.ts",
+        "type": "Media",
+        "size": 6157
+      },
+      {
+        "path": "/src/lib/envValidation.ts",
+        "type": "Media",
+        "size": 7797
+      },
+      {
+        "path": "/src/lib/logger.ts",
+        "type": "Media",
+        "size": 421
+      },
+      {
+        "path": "/src/lib/merge-validation.test.ts",
+        "type": "Media",
+        "size": 2697
+      },
+      {
+        "path": "/src/lib/merge-validation.ts",
+        "type": "Media",
+        "size": 1192
+      },
+      {
+        "path": "/src/lib/notifications.ts",
+        "type": "Media",
+        "size": 7757
+      },
+      {
+        "path": "/src/lib/objectAcl.ts",
+        "type": "Media",
+        "size": 1891
+      },
+      {
+        "path": "/src/lib/objectStorage.ts",
+        "type": "Media",
+        "size": 11272
+      },
+      {
+        "path": "/src/lib/rateLimit.ts",
+        "type": "Media",
+        "size": 1515
+      },
+      {
+        "path": "/src/lib/sentry.ts",
+        "type": "Media",
+        "size": 1805
+      },
+      {
+        "path": "/src/lib/shapes.ts",
+        "type": "Media",
+        "size": 3988
+      },
+      {
+        "path": "/src/middlewares/.gitkeep",
+        "type": "Misc",
+        "size": 0
+      },
+      {
+        "path": "/src/middlewares/clerkProxyMiddleware.ts",
+        "type": "Media",
+        "size": 1553
+      },
+      {
+        "path": "/src/routes/admin.ts",
+        "type": "Media",
+        "size": 33194
+      },
+      {
+        "path": "/src/routes/comments.ts",
+        "type": "Media",
+        "size": 9070
+      },
+      {
+        "path": "/src/routes/commits.ts",
+        "type": "Media",
+        "size": 9440
+      },
+      {
+        "path": "/src/routes/credits.ts",
+        "type": "Media",
+        "size": 1985
+      },
+      {
+        "path": "/src/routes/drafts.ts",
+        "type": "Media",
+        "size": 15003
+      },
+      {
+        "path": "/src/routes/health.ts",
+        "type": "Media",
+        "size": 288
+      },
+      {
+        "path": "/src/routes/index.ts",
+        "type": "Media",
+        "size": 1018
+      },
+      {
+        "path": "/src/routes/me.ts",
+        "type": "Media",
+        "size": 2519
+      },
+      {
+        "path": "/src/routes/notifications.ts",
+        "type": "Media",
+        "size": 2690
+      },
+      {
+        "path": "/src/routes/rounds.ts",
+        "type": "Media",
+        "size": 1875
+      },
+      {
+        "path": "/src/routes/songs.ts",
+        "type": "Media",
+        "size": 5195
+      },
+      {
+        "path": "/src/routes/stats.ts",
+        "type": "Media",
+        "size": 3853
+      },
+      {
+        "path": "/src/routes/storage.ts",
+        "type": "Media",
+        "size": 6952
+      },
+      {
+        "path": "/src/routes/versions.ts",
+        "type": "Media",
+        "size": 1872
+      },
+      {
+        "path": "/src/routes/votes.ts",
+        "type": "Media",
+        "size": 2738
+      },
+      {
+        "path": "/src/scripts/backfill-commit-preview-mixes.ts",
+        "type": "Media",
+        "size": 2130
+      },
+      {
+        "path": "/tsconfig.json",
+        "type": "Misc",
+        "size": 359
+      },
+      {
+        "path": "/vercel.json",
+        "type": "Misc",
+        "size": 353
+      }
+    ]
+  },
+  {
+    "type": "serverlessFunctions",
+    "artefacts": [
+      {
+        "path": "/api/[...all]",
+        "type": "API",
+        "size": 4451870,
+        "regions": [
+          "iad1"
+        ],
+        "runtime": "nodejs22.x",
+        "timeout": 30
+      }
+    ]
+  },
+  {
+    "type": "cronJobs",
+    "artefacts": []
+  }
+]

@@ -12,52 +12,20 @@
 // importing from `../src/*` directly, because workspace packages export
 // raw `.ts` files that Node cannot load at runtime.
 //
-// IMPORTANT: do not call `app.listen` here -- Vercel invokes the
-// exported handler directly. The long-running server entry lives in
-// `src/index.ts` and is still used by local Replit dev.
-//
-// We deliberately do NOT use top-level `await import(...)` here. If the
-// bundle's module-init does something that hangs (worker threads, socket
-// connects) or calls `process.exit`, top-level await will never resolve
-// and Vercel surfaces the generic FUNCTION_INVOCATION_FAILED page,
-// hiding our diagnostic. Instead we lazily import on the first request
-// inside a try/catch and cache the result. This also lets `?__diag=1`
-// always return synchronously, even when the bundle is broken.
+// Module-init must not throw here. Vercel's @vercel/node v5 statically
+// inlines this file (and the bundle, via ncc) into the function. Any
+// throw during module init kills the function before any request is
+// dispatched and the operator only sees Vercel's generic 500. The
+// bundled app handles env-validation problems by short-circuiting every
+// request with a readable 500 (see app.ts guard middleware).
+import app from "../dist/handler.mjs";
 
-let appPromise = null;
-
-async function loadApp() {
-  if (!appPromise) {
-    appPromise = import("../dist/handler.mjs").then(
-      (mod) => ({ ok: true, app: mod.default ?? mod }),
-      (err) => {
-        console.error("[api/[...all].mjs] Failed to load handler bundle:", err);
-        return { ok: false, error: err };
-      },
-    );
-  }
-  return appPromise;
-}
-
-function sendInitError(res, error) {
-  res.statusCode = 500;
-  res.setHeader("content-type", "text/plain; charset=utf-8");
-  const includeStack = process.env.DEBUG_BOOT === "true";
-  const baseMsg = error instanceof Error ? error.message : String(error);
-  const stack =
-    includeStack && error instanceof Error && error.stack
-      ? `\n\n${error.stack}`
-      : "";
-  res.end(`API failed to initialize:\n\n${baseMsg}${stack}`);
-}
-
-export default async function handler(req, res) {
-  // Diagnostic ping that bypasses the bundle entirely. Use this to
-  // confirm the function itself is being invoked when the bundle is
-  // suspected of crashing on cold start.
+export default function handler(req, res) {
+  // Diagnostic ping that bypasses the bundled app entirely. Useful for
+  // confirming the function file itself is being executed when the
+  // bundle is suspected of crashing on cold start.
   // Example: GET /api/anything?__diag=1
-  const url = req.url || "";
-  if (url.includes("__diag=1")) {
+  if ((req.url || "").includes("__diag=1")) {
     res.statusCode = 200;
     res.setHeader("content-type", "application/json; charset=utf-8");
     res.end(
@@ -77,34 +45,5 @@ export default async function handler(req, res) {
     );
     return;
   }
-
-  let result;
-  try {
-    result = await loadApp();
-  } catch (err) {
-    // Belt-and-suspenders: loadApp itself never throws (we wrap), but
-    // if something weird happens, surface it instead of crashing.
-    sendInitError(res, err);
-    return;
-  }
-
-  if (!result.ok) {
-    sendInitError(res, result.error);
-    return;
-  }
-
-  try {
-    return result.app(req, res);
-  } catch (err) {
-    // Synchronous throw from the Express app itself. Express normally
-    // routes errors through next(err), but a throw inside app(req,res)
-    // before any handler runs would otherwise become a generic 500.
-    console.error("[api/[...all].mjs] App threw synchronously:", err);
-    if (!res.headersSent) {
-      res.statusCode = 500;
-      res.setHeader("content-type", "text/plain; charset=utf-8");
-      const msg = err instanceof Error ? err.message : String(err);
-      res.end(`API request failed:\n\n${msg}`);
-    }
-  }
+  return app(req, res);
 }

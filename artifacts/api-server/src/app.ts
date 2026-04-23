@@ -1,11 +1,14 @@
 // MUST be the first import in this file. ESM hoists imports, and
-// envValidation runs as a module-load side effect that exits the process
-// in production when required env vars are missing/malformed. Putting it
-// first ensures validation runs before any other module (sentry, router,
-// @workspace/db, etc.) is evaluated — those modules read process.env at
-// load time and would otherwise crash with a single, less informative
-// error before our consolidated check could fire.
-import "./lib/envValidation";
+// envValidation collects production env problems as a module-load side
+// effect (without throwing — see envValidation.ts for the rationale).
+// Putting it first ensures validation runs before any other module
+// (sentry, router, @workspace/db, etc.) is evaluated — those modules
+// read process.env at load time and would otherwise crash with a less
+// informative error before our consolidated check could fire.
+import {
+  formatEnvProblems,
+  productionEnvProblems,
+} from "./lib/envValidation";
 
 import { initSentry, Sentry } from "./lib/sentry";
 
@@ -25,6 +28,19 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 
 const app: Express = express();
+
+// Guard middleware: if the production env validator found problems, every
+// request short-circuits with a readable 500 naming the offending vars.
+// This MUST be the first middleware so it runs before CORS/Clerk/etc.
+// can fail in a less informative way. We capture problems instead of
+// throwing because Vercel inlines this bundle into the function via ncc
+// — a throw at module-init kills the function before any handler runs.
+if (productionEnvProblems.length > 0) {
+  const message = formatEnvProblems(productionEnvProblems);
+  app.use((_req: Request, res: Response) => {
+    res.status(500).type("text/plain").send(`API failed to initialize:\n\n${message}\n`);
+  });
+}
 
 app.use(
   pinoHttp({

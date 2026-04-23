@@ -165,21 +165,52 @@ export function collectProductionEnvProblems(
   return problems;
 }
 
+export function formatEnvProblems(problems: readonly EnvProblem[]): string {
+  const summary = problems.map((p) => `  - ${p.name}: ${p.reason}`).join("\n");
+  return (
+    "*** ENV MISCONFIGURATION: " +
+    `${problems.length} required production environment variable${problems.length === 1 ? " is" : "s are"} ` +
+    "missing or malformed. The API cannot start safely. Fix the following " +
+    `and redeploy:\n${summary} ***`
+  );
+}
+
+/**
+ * Production env problems detected at module-load time. Empty array means
+ * everything is OK (or NODE_ENV !== "production"). Consumed by app.ts
+ * to install a guard middleware that 500s every request with the
+ * formatted message — see notes in validateProductionEnv() below for
+ * why we capture instead of throwing.
+ */
+export const productionEnvProblems: EnvProblem[] = (() => {
+  if (process.env.NODE_ENV !== "production") return [];
+  const problems = collectProductionEnvProblems();
+  if (problems.length > 0) {
+    const message = formatEnvProblems(problems);
+    logger.error({ problems }, message);
+    // Also write directly to stderr so the operator sees the misconfig in
+    // Vercel function logs even if pino hasn't flushed yet.
+    // eslint-disable-next-line no-console
+    console.error(message);
+  }
+  return problems;
+})();
+
 /**
  * Run the production env-var checks. In production, any problem causes a
  * single prominent error log naming every offending variable and then
- * throws so module initialization fails loudly. In non-production
- * environments this is a no-op.
+ * throws (or invokes `onFail`) so the long-running entrypoint can fail
+ * fast. In non-production environments this is a no-op.
  *
- * We deliberately throw instead of calling process.exit() because in
- * serverless runtimes (Vercel, Lambda) process.exit() during cold start
- * tears down the worker before any logs can flush — the operator sees
- * only an opaque FUNCTION_INVOCATION_FAILED. A thrown error during
- * module init is captured by the runtime and surfaced in the function
- * logs alongside our pino error above.
- *
- * Pass `onFail` to override the failure mode (used by tests so they
- * don't have to catch a thrown error).
+ * IMPORTANT: this is for the long-running entrypoint (src/index.ts) only.
+ * The serverless entrypoint must NOT throw at module-init: Vercel's
+ * @vercel/node v5 statically inlines the bundle into the function via
+ * ncc, so a throw here kills the function before any request handler
+ * runs and the operator only sees an opaque FUNCTION_INVOCATION_FAILED.
+ * For serverless, app.ts reads `productionEnvProblems` (above) and
+ * installs a guard middleware that returns the formatted message as a
+ * readable 500 on every request — so the deployed bundle still loads
+ * successfully and the misconfig is visible in the HTTP response body.
  */
 export function validateProductionEnv(options?: {
   env?: NodeJS.ProcessEnv;
@@ -191,16 +222,8 @@ export function validateProductionEnv(options?: {
   const problems = collectProductionEnvProblems(env);
   if (problems.length === 0) return;
 
-  const summary = problems.map((p) => `  - ${p.name}: ${p.reason}`).join("\n");
-  const message =
-    "*** ENV MISCONFIGURATION: " +
-    `${problems.length} required production environment variable${problems.length === 1 ? " is" : "s are"} ` +
-    "missing or malformed. The API cannot start safely. Fix the following " +
-    `and redeploy:\n${summary} ***`;
+  const message = formatEnvProblems(problems);
   logger.error({ problems }, message);
-  // Also write directly to stderr so the operator sees the misconfig in
-  // Vercel function logs even if pino hasn't flushed before the throw.
-  // Using the native console bypasses any worker-thread transport.
   // eslint-disable-next-line no-console
   console.error(message);
 
@@ -210,12 +233,3 @@ export function validateProductionEnv(options?: {
   }
   throw new Error(message);
 }
-
-// Run as a module-load side effect so that simply importing this file from
-// the very top of an entrypoint guarantees validation happens before any
-// other static import has a chance to read process.env (e.g. `@workspace/db`
-// throws synchronously on missing DATABASE_URL at module load). ESM hoists
-// imports, so explicit function calls in entrypoint top-level code would
-// run *after* every dependent module has already been evaluated — too
-// late. The function is still exported for tests and explicit re-use.
-validateProductionEnv();
