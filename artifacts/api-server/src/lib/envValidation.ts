@@ -198,6 +198,11 @@ export function validateProductionEnv(options?: {
     "missing or malformed. The API cannot start safely. Fix the following " +
     `and redeploy:\n${summary} ***`;
   logger.error({ problems }, message);
+  // Also write directly to stderr so the operator sees the misconfig in
+  // Vercel function logs even if pino hasn't flushed before the throw.
+  // Using the native console bypasses any worker-thread transport.
+  // eslint-disable-next-line no-console
+  console.error(message);
 
   if (options?.onFail) {
     options.onFail(problems);
